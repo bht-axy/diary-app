@@ -1,0 +1,2620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人日记软件</title>
+    
+    <!-- 页面状态显示 -->
+    <style>
+        #app-container {
+            display: none;
+        }
+        #auth-container {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            #app-container {
+                display: block;
+            }
+            #auth-container {
+                display: none;
+            }
+        }
+    </style>
+    <!-- TailwindCSS 3.0+ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- SheetJS for Excel handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 自定义字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366F1',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                        muted: '#94A3B8',
+                        'card-bg': '#FFFFFF',
+                        'sidebar-bg': '#F1F5F9'
+                    },
+                    fontFamily: {
+                        'display': ['Playfair Display', 'serif'],
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'card': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* 动画类 */
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* 卡片悬停效果 */
+        .diary-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .diary-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--tw-shadow-hover);
+        }
+        
+        /* 渐变背景 */
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* 主题切换过渡 */
+        .theme-transition {
+            transition: all 0.3s ease;
+        }
+        
+        /* 时间线样式 */
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #6366F1, #10B981);
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 32px;
+            padding: 24px;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .timeline-item:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -40px;
+            top: 32px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #6366F1;
+            border: 4px solid white;
+            box-shadow: 0 0 0 2px #6366F1;
+            transition: all 0.3s ease;
+        }
+        
+        .timeline-item:hover::before {
+            transform: scale(1.2);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+        
+        .timeline-date {
+            position: absolute;
+            left: -40px;
+            top: 0;
+            transform: translateX(-100%);
+            white-space: nowrap;
+            font-size: 12px;
+            color: #64748b;
+            padding: 6px 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+        }
+        
+        .timeline-content {
+            position: relative;
+        }
+        
+        /* 深色模式下的样式 */
+        .dark {
+            --tw-bg-opacity: 1;
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+        
+        .dark .bg-white {
+            background-color: #1e293b;
+        }
+        
+        .dark .text-gray-800 {
+            color: #f1f5f9;
+        }
+        
+        .dark .text-gray-600 {
+            color: #cbd5e1;
+        }
+        
+        .dark .text-gray-500 {
+            color: #94a3b8;
+        }
+        
+        .dark .border-gray-200 {
+            border-color: #334155;
+        }
+        
+        .dark .bg-gray-100 {
+            background-color: #334155;
+        }
+        
+        .dark .timeline::before {
+            background: linear-gradient(to bottom, #818cf8, #34d399);
+        }
+        
+        .dark .timeline-item {
+            background-color: #1e293b;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dark .timeline-item:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .dark .timeline-date {
+            color: #94a3b8;
+            background-color: #1e293b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .dark .timeline-item::before {
+            border-color: #1e293b;
+        }
+        
+        .dark .diary-card {
+            background-color: #1e293b;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dark .diary-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* 输入框样式 */
+        .input-field {
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        /* 加载动画 */
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* 响应式设计优化 */
+        @media (max-width: 768px) {
+            /* 侧边栏隐藏 */
+            .sidebar {
+                display: none;
+            }
+            
+            /* 主内容区占满宽度 */
+            .main-content {
+                width: 100% !important;
+                margin-left: 0 !important;
+            }
+            
+            /* 导航栏优化 */
+            nav {
+                padding: 1rem !important;
+            }
+            
+            .nav-brand {
+                font-size: 1.5rem !important;
+            }
+            
+            /* 卡片布局优化 */
+            .diary-card {
+                margin-bottom: 1rem;
+                padding: 1.25rem !important;
+            }
+            
+            /* 时间线布局优化 */
+            .timeline {
+                padding-left: 20px;
+            }
+            
+            .timeline::before {
+                left: 8px;
+            }
+            
+            .timeline-item {
+                padding: 1.25rem !important;
+                margin-bottom: 20px;
+            }
+            
+            .timeline-item::before {
+                left: -20px;
+                width: 12px;
+                height: 12px;
+                top: 20px;
+            }
+            
+            .timeline-date {
+                left: -20px;
+                font-size: 10px;
+                padding: 4px 8px;
+                white-space: normal;
+                transform: none;
+                position: relative;
+                margin-bottom: 8px;
+            }
+            
+            /* 模态框优化 */
+            .modal-content {
+                max-width: 90% !important;
+                max-height: 90vh !important;
+            }
+            
+            /* 按钮大小优化 */
+            .btn {
+                padding: 0.75rem 1.25rem !important;
+                font-size: 0.9rem;
+            }
+            
+            /* 输入框优化 */
+            .input-field {
+                padding: 0.75rem !important;
+                font-size: 1rem;
+            }
+            
+            /* 计划显示优化 */
+            #selected-month-plan {
+                font-size: 0.875rem;
+                max-width: 100%;
+            }
+            
+            /* 日期选择器优化 */
+            .date-picker {
+                font-size: 0.875rem;
+                padding: 0.5rem;
+            }
+            
+            /* 导出导入按钮优化 */
+            .import-export-buttons {
+                flex-direction: column;
+            }
+            
+            .import-export-buttons button {
+                width: 100% !important;
+                margin-bottom: 0.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            /* 导航栏进一步优化 */
+            nav {
+                padding: 0.75rem !important;
+            }
+            
+            .nav-brand {
+                font-size: 1.25rem !important;
+            }
+            
+            /* 按钮进一步优化 */
+            .btn {
+                padding: 0.6rem 1rem !important;
+                font-size: 0.85rem;
+            }
+            
+            /* 卡片进一步优化 */
+            .diary-card {
+                padding: 1rem !important;
+            }
+            
+            /* 模态框进一步优化 */
+            .modal-content {
+                max-width: 95% !important;
+                padding: 1rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light text-dark min-h-screen flex flex-col theme-transition">
+    <!-- 登录注册页面 -->
+    <div id="auth-container" class="flex-1 flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 mx-auto mb-4 bg-primary rounded-full flex items-center justify-center">
+                    <i class="fas fa-book text-white text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">个人日记软件</h1>
+                <p class="text-gray-500 mt-2">记录生活点滴，珍藏美好回忆</p>
+            </div>
+            
+            <!-- 登录表单 -->
+            <div id="login-form" class="space-y-6">
+                <h2 class="text-lg font-medium text-gray-800">登录</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">用户名</label>
+                    <input type="text" id="login-username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入用户名">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
+                    <input type="password" id="login-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码">
+                </div>
+                <div>
+                    <button id="login-btn" class="w-full py-2 px-4 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors">
+                        登录
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 注册表单 -->
+            <div id="register-form" class="space-y-6 hidden">
+                <h2 class="text-lg font-medium text-gray-800">注册</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">用户名</label>
+                    <input type="text" id="register-username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入用户名">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
+                    <input type="password" id="register-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">确认密码</label>
+                    <input type="password" id="register-confirm-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请再次输入密码">
+                </div>
+                <div>
+                    <button id="register-btn" class="w-full py-2 px-4 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors">
+                        注册
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 表单切换链接 -->
+            <div class="text-center mt-6">
+                <p class="text-gray-500">
+                    <span id="auth-switch-text">还没有账号？</span>
+                    <button id="auth-switch-btn" class="text-primary hover:text-primary/90 font-medium transition-colors">
+                        立即注册
+                    </button>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主应用容器 -->
+    <div id="app-container">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md sticky top-0 z-50 theme-transition">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center">
+                    <i class="fas fa-book text-white text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-display font-semibold gradient-text">日记</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="search-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-search text-gray-600"></i>
+                </button>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-moon text-gray-600"></i>
+                </button>
+                <button id="settings-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-cog text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 年度计划管理栏 -->
+    <div class="sticky top-16 z-40 bg-white shadow-md theme-transition">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-calendar-check text-primary"></i>
+                    <h2 class="font-medium">年度计划管理</h2>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="edit-year-plan-btn" class="text-primary hover:text-primary/80 transition-colors">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <select id="year-selector" class="px-3 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                        <option value="2029">2029</option>
+                        <option value="2030">2030</option>
+                    </select>
+                    <select id="month-selector" class="px-3 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+                        <option value="1">一月</option>
+                        <option value="2">二月</option>
+                        <option value="3">三月</option>
+                        <option value="4">四月</option>
+                        <option value="5">五月</option>
+                        <option value="6">六月</option>
+                        <option value="7">七月</option>
+                        <option value="8">八月</option>
+                        <option value="9">九月</option>
+                        <option value="10">十月</option>
+                        <option value="11">十一月</option>
+                        <option value="12">十二月</option>
+                    </select>
+                    <div id="selected-month-plan" class="text-sm text-gray-600 max-w-2xl whitespace-pre-line break-words">
+                        <!-- 选中月份的计划内容将在这里显示 -->
+                    </div>
+                    <button id="edit-yearly-plan-btn" class="text-primary hover:text-primary/80 transition-colors">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 container mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- 侧边栏 -->
+            <aside class="lg:w-72 bg-white rounded-2xl shadow-card p-6 animate-slide-in">
+                <div class="flex flex-col space-y-6">
+                    <button id="new-diary-btn" class="gradient-bg text-white py-4 px-6 rounded-xl font-semibold flex items-center justify-center space-x-3 btn">
+                        <i class="fas fa-plus text-lg"></i>
+                        <span>新建日记</span>
+                    </button>
+                    
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase mb-4 tracking-wider">分类</h2>
+                        <ul class="space-y-2" id="category-list">
+                            <li>
+                                <button class="w-full text-left py-3 px-4 rounded-lg hover:bg-gray-100 flex items-center justify-between transition-colors" data-category="全部">
+                                    <span class="flex items-center space-x-3">
+                                        <i class="fas fa-folder text-primary"></i>
+                                        <span>全部</span>
+                                    </span>
+                                    <span class="category-count text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">0</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="w-full text-left py-3 px-4 rounded-lg hover:bg-gray-100 flex items-center justify-between transition-colors" data-category="工作">
+                                    <span class="flex items-center space-x-3">
+                                        <i class="fas fa-briefcase text-blue-500"></i>
+                                        <span>工作</span>
+                                    </span>
+                                    <span class="category-count text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">0</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="w-full text-left py-3 px-4 rounded-lg hover:bg-gray-100 flex items-center justify-between transition-colors" data-category="生活">
+                                    <span class="flex items-center space-x-3">
+                                        <i class="fas fa-home text-green-500"></i>
+                                        <span>生活</span>
+                                    </span>
+                                    <span class="category-count text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">0</span>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="w-full text-left py-3 px-4 rounded-lg hover:bg-gray-100 flex items-center justify-between transition-colors" data-category="学习">
+                                    <span class="flex items-center space-x-3">
+                                        <i class="fas fa-graduation-cap text-yellow-500"></i>
+                                        <span>学习</span>
+                                    </span>
+                                    <span class="category-count text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">0</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-500 uppercase mb-4 tracking-wider">标签</h2>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full hover:bg-blue-200 cursor-pointer transition-colors">
+                                重要
+                            </span>
+                            <span class="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full hover:bg-green-200 cursor-pointer transition-colors">
+                                日常
+                            </span>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full hover:bg-yellow-200 cursor-pointer transition-colors">
+                                计划
+                            </span>
+                            <span class="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full hover:bg-purple-200 cursor-pointer transition-colors">
+                                想法
+                            </span>
+                            <span class="text-xs bg-red-100 text-red-800 px-3 py-1 rounded-full hover:bg-red-200 cursor-pointer transition-colors">
+                                紧急
+                            </span>
+                            <span class="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full hover:bg-indigo-200 cursor-pointer transition-colors">
+                                灵感
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                            <h3 class="font-medium text-sm mb-2">今日</h3>
+                            <div id="today-info" class="text-sm text-gray-600">
+                                <!-- 今日信息将在这里显示 -->
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-xl p-4">
+                        <h3 class="font-medium text-sm mb-3">选择日期</h3>
+                        <input type="date" id="date-picker" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <button id="go-to-date-btn" class="w-full mt-3 py-2 px-4 bg-primary text-white rounded-lg font-medium transition-colors hover:bg-primary/90">
+                            查看/编辑该日期日记
+                        </button>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <h3 class="font-medium text-sm mb-3">数据管理</h3>
+                        <div class="space-y-2">
+                            <button id="export-btn" class="w-full py-2 px-4 bg-green-500 text-white rounded-lg font-medium transition-colors hover:bg-green-600 text-sm">
+                                <i class="fas fa-download mr-2"></i> 导出到Excel
+                            </button>
+                            <label for="import-btn" class="w-full py-2 px-4 bg-blue-500 text-white rounded-lg font-medium transition-colors hover:bg-blue-600 text-sm cursor-pointer text-center block">
+                                <i class="fas fa-upload mr-2"></i> 从Excel导入
+                            </label>
+                            <input type="file" id="import-btn" accept=".xlsx, .xls" class="hidden">
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- 主内容 -->
+            <div class="flex-1">
+                <!-- 搜索栏 -->
+                <div class="bg-white rounded-2xl shadow-card p-6 mb-8 animate-fade-in">
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="搜索日记..." class="w-full pl-12 pr-6 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field">
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg"></i>
+                    </div>
+                </div>
+                
+                <!-- 日记列表 -->
+                <div class="bg-white rounded-2xl shadow-card p-6 animate-fade-in" style="animation-delay: 0.1s">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-display font-semibold">我的日记</h2>
+                        <div class="flex space-x-3">
+                            <button id="view-card" class="py-2 px-4 rounded-lg border border-primary bg-primary text-white text-sm flex items-center space-x-2 btn">
+                                <i class="fas fa-th-large"></i>
+                                <span>卡片</span>
+                            </button>
+                            <button id="view-timeline" class="py-2 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm flex items-center space-x-2 btn">
+                                <i class="fas fa-stream"></i>
+                                <span>时间线</span>
+                            </button>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="sort-newest" class="py-2 px-4 rounded-lg border border-primary bg-primary text-white text-sm btn">
+                                最新
+                            </button>
+                            <button id="sort-oldest" class="py-2 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm btn">
+                                最早
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 日记卡片容器 -->
+                    <div id="diary-list" class="space-y-6">
+                        <!-- 空状态 -->
+                        <div class="text-center py-16">
+                            <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                <i class="fas fa-book-open text-4xl text-gray-400"></i>
+                            </div>
+                            <h3 class="text-xl font-medium mb-2">暂无日记</h3>
+                            <p class="text-gray-500 mb-6">点击「新建日记」开始记录你的生活</p>
+                            <button id="empty-state-new-btn" class="gradient-bg text-white py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2 mx-auto btn">
+                                <i class="fas fa-plus"></i>
+                                <span>新建日记</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white shadow-inner py-8 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                    <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center">
+                        <i class="fas fa-book text-white"></i>
+                    </div>
+                    <span class="font-display font-medium text-lg">个人日记</span>
+                </div>
+                <div class="text-gray-500 text-sm">
+                    © 2026 个人日记软件 | 创作者：@axy
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 新建/编辑日记模态框 -->
+    <div id="diary-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="modal-title" class="text-2xl font-display font-semibold">新建日记</h2>
+                    <button id="close-modal" class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="diary-form">
+                    <input type="hidden" id="diary-id">
+                    
+                    <!-- 日期和天气信息 -->
+                    <div class="mb-6">
+                        <div id="date-display" class="text-sm text-gray-500 mb-2">
+                            <!-- 日期信息将在这里显示 -->
+                        </div>
+                        <div id="weather-display" class="text-sm text-gray-500">
+                            <!-- 天气信息将在这里显示 -->
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">当日计划</label>
+                        <textarea id="diary-plan" placeholder="写下今天的计划..." rows="3" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <textarea id="diary-content" placeholder="写下你的想法..." rows="6" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <!-- 附件上传区域 -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">附件</label>
+                        <div class="flex items-center space-x-3">
+                            <label for="diary-attachment" class="px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-paperclip mr-2"></i> 选择文件
+                            </label>
+                            <input type="file" id="diary-attachment" accept="image/*,.pdf,.doc,.docx,.txt" class="hidden">
+                            <span id="attachment-filename" class="text-sm text-gray-500"></span>
+                        </div>
+                        <!-- 附件预览区域 -->
+                        <div id="attachment-preview" class="mt-3 flex flex-wrap gap-2"></div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">当日总结</label>
+                        <textarea id="diary-summary" placeholder="写下今天的总结..." rows="3" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+                            <select id="diary-category" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field">
+                                <option value="">选择分类</option>
+                                <option value="工作">工作</option>
+                                <option value="生活">生活</option>
+                                <option value="学习">学习</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">标签</label>
+                            <input type="text" id="diary-tags" placeholder="用逗号分隔，如：重要,计划" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field">
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancel-btn" class="py-3 px-6 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium btn">
+                            取消
+                        </button>
+                        <button type="submit" class="gradient-bg text-white py-3 px-6 rounded-xl font-medium btn">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 年度计划编辑模态框 -->
+    <div id="year-plan-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="year-plan-modal-title" class="text-2xl font-display font-semibold">编辑年度计划</h2>
+                    <button id="close-year-plan-modal" class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="year-plan-form">
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">年度总计划</label>
+                        <textarea id="year-plan-input" placeholder="写下本年度的总计划..." rows="8" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">全年总结</label>
+                        <textarea id="year-summary-input" placeholder="写下本年度的总结..." rows="8" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancel-year-plan-btn" class="py-3 px-6 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium btn">
+                            取消
+                        </button>
+                        <button type="submit" class="gradient-bg text-white py-3 px-6 rounded-xl font-medium btn">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 月度计划编辑模态框 -->
+    <div id="yearly-plan-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="yearly-plan-modal-title" class="text-2xl font-display font-semibold">编辑月度计划</h2>
+                    <button id="close-yearly-plan-modal" class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="yearly-plan-form">
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">月度计划</label>
+                        <textarea id="yearly-plan-input" placeholder="写下该月的计划..." rows="6" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">月度总结</label>
+                        <textarea id="yearly-summary-input" placeholder="写下该月的总结..." rows="6" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent input-field"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancel-yearly-plan-btn" class="py-3 px-6 border border-gray-200 rounded-xl hover:bg-gray-50 font-medium btn">
+                            取消
+                        </button>
+                        <button type="submit" class="gradient-bg text-white py-3 px-6 rounded-xl font-medium btn">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentDiaryId = null;
+        let currentView = 'card'; // 'card' or 'timeline'
+        let currentSort = 'newest'; // 'newest' or 'oldest'
+        let currentEditingDate = null; // 当前编辑的日期
+        
+        // DOM 元素
+        const elements = {
+            // 认证相关元素
+            authContainer: document.getElementById('auth-container'),
+            appContainer: document.getElementById('app-container'),
+            loginForm: document.getElementById('login-form'),
+            registerForm: document.getElementById('register-form'),
+            loginUsername: document.getElementById('login-username'),
+            loginPassword: document.getElementById('login-password'),
+            loginBtn: document.getElementById('login-btn'),
+            registerUsername: document.getElementById('register-username'),
+            registerPassword: document.getElementById('register-password'),
+            registerConfirmPassword: document.getElementById('register-confirm-password'),
+            registerBtn: document.getElementById('register-btn'),
+            authSwitchText: document.getElementById('auth-switch-text'),
+            authSwitchBtn: document.getElementById('auth-switch-btn'),
+            
+            // 日记相关元素
+            newDiaryBtn: document.getElementById('new-diary-btn'),
+            emptyStateNewBtn: document.getElementById('empty-state-new-btn'),
+            diaryModal: document.getElementById('diary-modal'),
+            closeModal: document.getElementById('close-modal'),
+            cancelBtn: document.getElementById('cancel-btn'),
+            diaryForm: document.getElementById('diary-form'),
+            diaryId: document.getElementById('diary-id'),
+            diaryContent: document.getElementById('diary-content'),
+            diaryCategory: document.getElementById('diary-category'),
+            diaryTags: document.getElementById('diary-tags'),
+            diaryPlan: document.getElementById('diary-plan'),
+            diarySummary: document.getElementById('diary-summary'),
+            modalTitle: document.getElementById('modal-title'),
+            diaryList: document.getElementById('diary-list'),
+            searchInput: document.getElementById('search-input'),
+            themeToggle: document.getElementById('theme-toggle'),
+            viewCard: document.getElementById('view-card'),
+            viewTimeline: document.getElementById('view-timeline'),
+            sortNewest: document.getElementById('sort-newest'),
+            sortOldest: document.getElementById('sort-oldest'),
+            todayInfo: document.getElementById('today-info'),
+            dateDisplay: document.getElementById('date-display'),
+            weatherDisplay: document.getElementById('weather-display'),
+            datePicker: document.getElementById('date-picker'),
+            goToDateBtn: document.getElementById('go-to-date-btn'),
+            editYearPlanBtn: document.getElementById('edit-year-plan-btn'),
+            yearSelector: document.getElementById('year-selector'),
+            monthSelector: document.getElementById('month-selector'),
+            selectedMonthPlan: document.getElementById('selected-month-plan'),
+            editYearlyPlanBtn: document.getElementById('edit-yearly-plan-btn'),
+            yearPlanModal: document.getElementById('year-plan-modal'),
+            closeYearPlanModal: document.getElementById('close-year-plan-modal'),
+            cancelYearPlanBtn: document.getElementById('cancel-year-plan-btn'),
+            yearPlanForm: document.getElementById('year-plan-form'),
+            yearPlanInput: document.getElementById('year-plan-input'),
+            yearSummaryInput: document.getElementById('year-summary-input'),
+            yearlyPlanModal: document.getElementById('yearly-plan-modal'),
+            closeYearlyPlanModal: document.getElementById('close-yearly-plan-modal'),
+            cancelYearlyPlanBtn: document.getElementById('cancel-yearly-plan-btn'),
+            yearlyPlanForm: document.getElementById('yearly-plan-form'),
+            yearlyPlanInput: document.getElementById('yearly-plan-input'),
+            yearlySummaryInput: document.getElementById('yearly-summary-input'),
+            exportBtn: document.getElementById('export-btn'),
+            importBtn: document.getElementById('import-btn'),
+            // 附件相关元素
+            diaryAttachment: document.getElementById('diary-attachment'),
+            attachmentFilename: document.getElementById('attachment-filename'),
+            attachmentPreview: document.getElementById('attachment-preview')
+        };
+        
+        // 事件监听器
+        // 认证事件监听器
+        elements.loginBtn.addEventListener('click', login);
+        elements.registerBtn.addEventListener('click', register);
+        elements.authSwitchBtn.addEventListener('click', switchAuthForm);
+        
+        // 附件事件监听器
+        elements.diaryAttachment.addEventListener('change', handleAttachmentChange);
+        
+        // 日记事件监听器
+        elements.newDiaryBtn.addEventListener('click', openNewDiaryModal);
+        elements.emptyStateNewBtn.addEventListener('click', openNewDiaryModal);
+        elements.closeModal.addEventListener('click', closeDiaryModal);
+        elements.cancelBtn.addEventListener('click', closeDiaryModal);
+        elements.diaryForm.addEventListener('submit', saveDiary);
+        elements.searchInput.addEventListener('input', searchDiaries);
+        elements.themeToggle.addEventListener('click', toggleTheme);
+        elements.viewCard.addEventListener('click', () => switchView('card'));
+        elements.viewTimeline.addEventListener('click', () => switchView('timeline'));
+        elements.sortNewest.addEventListener('click', () => switchSort('newest'));
+        elements.sortOldest.addEventListener('click', () => switchSort('oldest'));
+        elements.goToDateBtn.addEventListener('click', goToDateDiary);
+        elements.editYearPlanBtn.addEventListener('click', openYearPlanModal);
+        elements.yearSelector.addEventListener('change', loadSelectedMonthPlan);
+        elements.monthSelector.addEventListener('change', loadSelectedMonthPlan);
+        elements.editYearlyPlanBtn.addEventListener('click', openYearlyPlanModal);
+        elements.closeYearPlanModal.addEventListener('click', closeYearPlanModal);
+        elements.cancelYearPlanBtn.addEventListener('click', closeYearPlanModal);
+        elements.yearPlanForm.addEventListener('submit', saveYearPlan);
+        elements.closeYearlyPlanModal.addEventListener('click', closeYearlyPlanModal);
+        elements.cancelYearlyPlanBtn.addEventListener('click', closeYearlyPlanModal);
+        elements.yearlyPlanForm.addEventListener('submit', saveYearlyPlan);
+        elements.exportBtn.addEventListener('click', exportDiariesToExcel);
+        elements.importBtn.addEventListener('change', importDiariesFromExcel);
+        
+        // 初始化
+        // 用户认证功能
+        let currentUser = null;
+        
+        // 初始化用户认证
+        function initAuth() {
+            // 检查是否已登录
+            const loggedInUser = localStorage.getItem('currentUser');
+            if (loggedInUser) {
+                currentUser = JSON.parse(loggedInUser);
+                showMainApp();
+            } else {
+                showAuthPage();
+            }
+        }
+        
+        // 切换认证表单
+        function switchAuthForm() {
+            const isLogin = elements.loginForm.style.display !== 'none';
+            if (isLogin) {
+                // 切换到注册表单
+                elements.loginForm.classList.add('hidden');
+                elements.registerForm.classList.remove('hidden');
+                elements.authSwitchText.textContent = '已经有账号？';
+                elements.authSwitchBtn.textContent = '立即登录';
+            } else {
+                // 切换到登录表单
+                elements.registerForm.classList.add('hidden');
+                elements.loginForm.classList.remove('hidden');
+                elements.authSwitchText.textContent = '还没有账号？';
+                elements.authSwitchBtn.textContent = '立即注册';
+            }
+        }
+        
+        // 登录
+        function login() {
+            const username = elements.loginUsername.value.trim();
+            const password = elements.loginPassword.value;
+            
+            if (!username || !password) {
+                alert('请输入用户名和密码');
+                return;
+            }
+            
+            // 获取用户数据
+            const users = getUsersFromStorage();
+            
+            // 检查用户是否存在
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                showMainApp();
+            } else {
+                alert('用户名或密码错误');
+            }
+        }
+        
+        // 注册
+        function register() {
+            const username = elements.registerUsername.value.trim();
+            const password = elements.registerPassword.value;
+            const confirmPassword = elements.registerConfirmPassword.value;
+            
+            if (!username || !password || !confirmPassword) {
+                alert('请填写所有字段');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+            
+            // 获取用户数据
+            const users = getUsersFromStorage();
+            
+            // 检查用户名是否已存在
+            if (users.some(u => u.username === username)) {
+                alert('用户名已存在');
+                return;
+            }
+            
+            // 创建新用户
+            const newUser = {
+                id: Date.now().toString(),
+                username: username,
+                password: password
+            };
+            
+            // 保存用户数据
+            users.push(newUser);
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // 登录新用户
+            currentUser = newUser;
+            localStorage.setItem('currentUser', JSON.stringify(newUser));
+            showMainApp();
+        }
+        
+        // 获取用户数据
+        function getUsersFromStorage() {
+            const users = localStorage.getItem('users');
+            if (users) {
+                return JSON.parse(users);
+            }
+            
+            // 默认用户
+            const defaultUsers = [
+                {
+                    id: '1',
+                    username: 'admin',
+                    password: 'admin123'
+                }
+            ];
+            
+            localStorage.setItem('users', JSON.stringify(defaultUsers));
+            return defaultUsers;
+        }
+        
+        // 显示主应用
+        function showMainApp() {
+            elements.authContainer.classList.add('hidden');
+            elements.appContainer.classList.remove('hidden');
+            initApp();
+        }
+        
+        // 显示认证页面
+        function showAuthPage() {
+            elements.authContainer.classList.remove('hidden');
+            elements.appContainer.classList.add('hidden');
+        }
+        
+        // 数据隔离函数 - 获取当前用户的数据键
+        function getUserDataKey(key) {
+            if (!currentUser) return key;
+            return `${currentUser.username}-${key}`;
+        }
+        
+        // 修改存储函数以支持用户数据隔离
+        function getDiariesFromStorage() {
+            const key = getUserDataKey('diaries');
+            const diaries = localStorage.getItem(key);
+            return diaries ? JSON.parse(diaries) : [];
+        }
+        
+        function saveDiaryToStorage(diary) {
+            const key = getUserDataKey('diaries');
+            const diaries = getDiariesFromStorage();
+            const index = diaries.findIndex(d => d.id === diary.id);
+            
+            if (index !== -1) {
+                diaries[index] = diary;
+            } else {
+                diaries.push(diary);
+            }
+            
+            localStorage.setItem(key, JSON.stringify(diaries));
+            // 删除自动导出功能，改为手动导出
+        }
+        
+        // 修改其他存储函数以支持用户数据隔离
+        function loadSelectedMonthPlan() {
+            const year = elements.yearSelector.value;
+            const month = elements.monthSelector.value;
+            const monthKey = getUserDataKey(`yearly-plan-${year}-${String(month).padStart(2, '0')}`);
+            const plan = localStorage.getItem(monthKey);
+            
+            if (plan) {
+                elements.selectedMonthPlan.textContent = plan;
+            } else {
+                elements.selectedMonthPlan.textContent = '点击编辑按钮添加该月计划';
+            }
+        }
+        
+        function saveYearlyPlan(e) {
+            e.preventDefault();
+            
+            const year = elements.yearSelector.value;
+            const month = elements.monthSelector.value;
+            const planKey = getUserDataKey(`yearly-plan-${year}-${String(month).padStart(2, '0')}`);
+            const summaryKey = getUserDataKey(`yearly-summary-${year}-${String(month).padStart(2, '0')}`);
+            const plan = elements.yearlyPlanInput.value.trim();
+            const summary = elements.yearlySummaryInput.value.trim();
+            
+            localStorage.setItem(planKey, plan);
+            localStorage.setItem(summaryKey, summary);
+            
+            elements.selectedMonthPlan.textContent = plan || '点击编辑按钮添加该月计划';
+            closeYearlyPlanModal();
+        }
+        
+        function openYearlyPlanModal() {
+            const year = elements.yearSelector.value;
+            const month = elements.monthSelector.value;
+            const planKey = getUserDataKey(`yearly-plan-${year}-${String(month).padStart(2, '0')}`);
+            const summaryKey = getUserDataKey(`yearly-summary-${year}-${String(month).padStart(2, '0')}`);
+            const plan = localStorage.getItem(planKey);
+            const summary = localStorage.getItem(summaryKey);
+            
+            elements.yearlyPlanInput.value = plan || '';
+            elements.yearlySummaryInput.value = summary || '';
+            
+            // 更新模态框标题，显示当前编辑的月份
+            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            document.getElementById('yearly-plan-modal-title').textContent = `编辑${monthNames[month - 1]}计划`;
+            
+            elements.yearlyPlanModal.classList.remove('hidden');
+        }
+        
+        function openYearPlanModal() {
+            const year = elements.yearSelector.value;
+            const planKey = getUserDataKey(`year-plan-${year}`);
+            const summaryKey = getUserDataKey(`year-summary-${year}`);
+            const plan = localStorage.getItem(planKey);
+            const summary = localStorage.getItem(summaryKey);
+            
+            elements.yearPlanInput.value = plan || '';
+            elements.yearSummaryInput.value = summary || '';
+            
+            // 更新模态框标题，显示当前编辑的年份
+            document.getElementById('year-plan-modal-title').textContent = `编辑${year}年计划`;
+            
+            elements.yearPlanModal.classList.remove('hidden');
+        }
+        
+        function saveYearPlan(e) {
+            e.preventDefault();
+            
+            const year = elements.yearSelector.value;
+            const planKey = getUserDataKey(`year-plan-${year}`);
+            const summaryKey = getUserDataKey(`year-summary-${year}`);
+            const plan = elements.yearPlanInput.value.trim();
+            const summary = elements.yearSummaryInput.value.trim();
+            
+            localStorage.setItem(planKey, plan);
+            localStorage.setItem(summaryKey, summary);
+            
+            closeYearPlanModal();
+        }
+        
+        // 初始化应用
+        function initApp() {
+            loadDiaries();
+            loadTheme();
+            updateTodayInfo();
+            
+            // 设置当前月份作为默认选择
+            const now = new Date();
+            elements.monthSelector.value = String(now.getMonth() + 1);
+            
+            // 加载当前月份计划
+            loadSelectedMonthPlan();
+            
+            // 计算并更新分类统计
+            updateCategoryStatistics();
+            
+            // 设置初始按钮状态
+            elements.sortNewest.classList.add('border-primary', 'bg-primary', 'text-white');
+            elements.sortNewest.classList.remove('border-gray-200', 'hover:bg-gray-50');
+            elements.viewCard.classList.add('border-primary', 'bg-primary', 'text-white');
+            elements.viewCard.classList.remove('border-gray-200', 'hover:bg-gray-50');
+        }
+        
+        // 附件处理功能
+        let currentAttachment = null;
+        
+        // 处理附件选择
+        function handleAttachmentChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // 显示文件名
+                elements.attachmentFilename.textContent = file.name;
+                
+                // 渲染预览
+                renderAttachmentPreview(file);
+                
+                // 保存到当前附件变量
+                currentAttachment = file;
+            }
+        }
+        
+        // 渲染附件预览
+        function renderAttachmentPreview(file) {
+            const previewContainer = elements.attachmentPreview;
+            previewContainer.innerHTML = '';
+            
+            if (file.type.startsWith('image/')) {
+                // 图片预览
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'max-w-32 max-h-32 rounded-lg object-cover border border-gray-200';
+                    img.alt = file.name;
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // 其他文件类型的预览
+                const fileIcon = document.createElement('div');
+                fileIcon.className = 'flex items-center p-3 bg-gray-100 rounded-lg border border-gray-200';
+                fileIcon.innerHTML = `
+                    <i class="fas fa-file mr-2 text-gray-500"></i>
+                    <div class="text-sm">
+                        <div>${file.name}</div>
+                        <div class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                `;
+                previewContainer.appendChild(fileIcon);
+            }
+        }
+        
+        // 保存附件到localStorage
+        function saveAttachment(file) {
+            const reader = new FileReader();
+            return new Promise((resolve, reject) => {
+                reader.onload = function(e) {
+                    const attachment = {
+                        id: Date.now().toString(),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result // 编码后的文件数据
+                    };
+                    resolve(attachment);
+                };
+                reader.onerror = reject;
+                
+                // 根据文件类型选择读取方式
+                if (file.type.startsWith('image/')) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsDataURL(file); // 对于其他类型文件也使用base64编码
+                }
+            });
+        }
+        
+        // 删除附件
+        function deleteAttachment() {
+            currentAttachment = null;
+            elements.attachmentFilename.textContent = '';
+            elements.attachmentPreview.innerHTML = '';
+            elements.diaryAttachment.value = '';
+        }
+        
+        // 查看附件
+        function viewAttachment(dataUrl) {
+            // 创建一个简单的模态框来查看附件
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+                    <img src="${dataUrl}" alt="附件" class="max-w-full max-h-[80vh] rounded-lg">
+                    <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 transition-colors">×</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initAuth();
+        });
+        
+        // 更新分类统计
+        function updateCategoryStatistics() {
+            const diaries = getDiariesFromStorage();
+            
+            // 计算各分类的日记数量
+            const categoryCounts = {
+                '全部': diaries.length,
+                '工作': diaries.filter(diary => diary.category === '工作').length,
+                '生活': diaries.filter(diary => diary.category === '生活').length,
+                '学习': diaries.filter(diary => diary.category === '学习').length
+            };
+            
+            // 更新页面上的分类计数
+            document.querySelectorAll('[data-category]').forEach(button => {
+                const category = button.getAttribute('data-category');
+                const countElement = button.querySelector('.category-count');
+                if (countElement) {
+                    countElement.textContent = categoryCounts[category] || 0;
+                }
+            });
+        }
+        
+        // 导出日记到 Excel 文件
+        function exportDiariesToExcel() {
+            const diaries = getDiariesFromStorage();
+            
+            // 创建 Excel 工作簿
+            const wb = XLSX.utils.book_new();
+            
+            // 按年份分组日记
+            const diariesByYear = {};
+            diaries.forEach(diary => {
+                const year = new Date(diary.createdAt).getFullYear();
+                if (!diariesByYear[year]) {
+                    diariesByYear[year] = [];
+                }
+                diariesByYear[year].push(diary);
+            });
+            
+            // 为每个年份创建工作表
+            Object.keys(diariesByYear).forEach(year => {
+                const yearDiaries = diariesByYear[year];
+                
+                // 获取该年份的年度计划和总结
+                const yearPlanKey = `year-plan-${year}`;
+                const yearSummaryKey = `year-summary-${year}`;
+                const yearPlan = localStorage.getItem(yearPlanKey);
+                const yearSummary = localStorage.getItem(yearSummaryKey);
+                
+                const yearlyPlans = [];
+                const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+                
+                for (let month = 1; month <= 12; month++) {
+                    const planKey = `yearly-plan-${year}-${String(month).padStart(2, '0')}`;
+                    const summaryKey = `yearly-summary-${year}-${String(month).padStart(2, '0')}`;
+                    const plan = localStorage.getItem(planKey);
+                    const summary = localStorage.getItem(summaryKey);
+                    yearlyPlans.push({
+                        '月份': monthNames[month - 1],
+                        '计划': plan || '无',
+                        '总结': summary || '无'
+                    });
+                }
+                
+                // 准备工作表数据 - 先添加年度计划和总结
+                const yearPlanData = [
+                    { '年度总计划': yearPlan || '无' },
+                    { '全年总结': yearSummary || '无' },
+                    {} // 空行分隔
+                ];
+                
+                // 准备月度计划数据
+                const monthlyPlanData = yearlyPlans.map(plan => ({
+                    '月份': plan.月份,
+                    '计划': plan.计划,
+                    '总结': plan.总结
+                }));
+                
+                // 创建工作表
+                const ws = XLSX.utils.aoa_to_sheet([]);
+                
+                // 添加年度计划和总结区域
+                XLSX.utils.sheet_add_aoa(ws, [['年度计划']], {origin: 'A1'});
+                XLSX.utils.sheet_add_json(ws, yearPlanData, {origin: 'A2', skipHeader: false});
+                
+                // 添加月度计划区域
+                const monthlyPlanStartRow = 5;
+                XLSX.utils.sheet_add_aoa(ws, [['月度计划']], {origin: `A${monthlyPlanStartRow}`});
+                XLSX.utils.sheet_add_json(ws, monthlyPlanData, {origin: monthlyPlanStartRow + 1, skipHeader: false});
+                
+                // 在月度计划区域下方添加空行分隔
+                const monthlyPlanRange = XLSX.utils.decode_range(ws['!ref']);
+                const diariesStartRow = monthlyPlanRange.e.r + 3;
+                
+                // 准备日记数据
+                const diariesData = yearDiaries.map(diary => ({
+                    '日期': formatDate(new Date(diary.createdAt)),
+                    '农历日期': getLunarDate(new Date(diary.createdAt)),
+                    '标题': diary.title,
+                    '内容': diary.content,
+                    '计划': diary.plan,
+                    '总结': diary.summary,
+                    '分类': diary.category,
+                    '标签': diary.tags ? diary.tags.join(',') : '',
+                    '天气': diary.weather ? `${diary.weather.description} ${diary.weather.temperature}` : '',
+                    '附件': diary.attachments && diary.attachments.length > 0 ? diary.attachments.map(a => a.name).join(',') : '无',
+                    '创建时间': new Date(diary.createdAt).toLocaleString('zh-CN'),
+                    '更新时间': new Date(diary.updatedAt).toLocaleString('zh-CN')
+                }));
+                
+                // 添加日记数据到工作表
+                XLSX.utils.sheet_add_json(ws, diariesData, {origin: diariesStartRow, skipHeader: false});
+                
+                // 添加日记区域标题
+                XLSX.utils.sheet_add_aoa(ws, [['日记记录']], {origin: `A${diariesStartRow}`});
+                
+                // 调整列宽
+                ws['!cols'] = [
+                    {wch: 10}, {wch: 50}, {wch: 50}, // 计划区域列宽
+                    {wch: 15}, {wch: 15}, {wch: 25}, {wch: 40}, {wch: 20}, 
+                    {wch: 20}, {wch: 10}, {wch: 20}, {wch: 15}, {wch: 40}, {wch: 20}, {wch: 20} // 调整后的列宽，附件列使用 40 宽度
+                ];
+                
+                // 添加到工作簿
+                XLSX.utils.book_append_sheet(wb, ws, year.toString());
+            });
+            
+            // 保存 Excel 文件
+            XLSX.writeFile(wb, 'diary_database.xlsx');
+            alert('日记导出成功！');
+        }
+        
+        // 从 Excel 文件导入日记
+        function importDiariesFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, {type: 'array'});
+                    
+                    const importedDiaries = [];
+                    
+                    // 遍历所有工作表（每个工作表代表一年）
+                    wb.SheetNames.forEach(sheetName => {
+                        const ws = wb.Sheets[sheetName];
+                        
+                        // 尝试解析工作表数据，使用多种选项
+                        let jsonData = [];
+                        try {
+                            // 尝试直接解析
+                            jsonData = XLSX.utils.sheet_to_json(ws);
+                            
+                            // 如果没有解析到数据，尝试跳过前几行（可能有计划区域）
+                            if (jsonData.length === 0) {
+                                // 尝试从第5行开始解析（跳过计划区域）
+                                const range = XLSX.utils.decode_range(ws['!ref']);
+                                if (range.e.r > 5) {
+                                    const options = {
+                                        header: 1,
+                                        range: XLSX.utils.encode_range({s: {r: 5, c: 0}, e: range.e})
+                                    };
+                                    const rawData = XLSX.utils.sheet_to_json(ws, options);
+                                    // 查找包含"日期"列的行作为标题行
+                                    const headerIndex = rawData.findIndex(row => 
+                                        row.some(cell => String(cell).includes('日期'))
+                                    );
+                                    if (headerIndex >= 0) {
+                                        const newOptions = {
+                                            range: XLSX.utils.encode_range({
+                                                s: {r: 5 + headerIndex, c: 0}, 
+                                                e: range.e
+                                            })
+                                        };
+                                        jsonData = XLSX.utils.sheet_to_json(ws, newOptions);
+                                    }
+                                }
+                            }
+                        } catch (parseError) {
+                            console.error('解析工作表 ' + sheetName + ' 时出错:', parseError);
+                            return; // 跳过该工作表
+                        }
+                        
+                        jsonData.forEach(row => {
+                            // 检查是否包含日期信息（防止导入计划区域）
+                            if (!row['日期'] && !row['创建时间']) {
+                                return; // 跳过不包含日期信息的行（计划区域）
+                            }
+                            
+                            try {
+                                // 创建日记对象
+                                const diary = {
+                                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                                    title: row['标题'] || '无标题',
+                                    content: row['内容'] || '',
+                                    plan: row['计划'] || '',
+                                    summary: row['总结'] || '',
+                                    category: row['分类'] || '',
+                                    tags: row['标签'] ? row['标签'].split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+                                    weather: row['天气'] ? { 
+                                        description: row['天气'].split(' ')[0] || '', 
+                                        temperature: row['天气'].split(' ')[1] || '' 
+                                    } : null,
+                                    createdAt: parseDate(row['创建时间'] || row['日期']).toISOString(),
+                                    updatedAt: parseDate(row['更新时间'] || row['日期']).toISOString()
+                                };
+                                
+                                importedDiaries.push(diary);
+                            } catch (rowError) {
+                                console.error('解析行时出错:', rowError, row);
+                            }
+                        });
+                    });
+                    
+                    // 保存到本地存储
+                    if (importedDiaries.length > 0) {
+                        localStorage.setItem('diaries', JSON.stringify(importedDiaries));
+                        loadDiaries();
+                        updateCategoryStatistics();
+                        alert('日记导入成功！共导入 ' + importedDiaries.length + ' 条记录');
+                    } else {
+                        alert('没有找到有效的日记数据！');
+                    }
+                    
+                    // 清空文件输入
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('导入错误:', error);
+                    alert('导入失败！请检查文件格式是否正确。错误信息: ' + error.message);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // 格式化日期为 YYYY-MM-DD
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // 解析日期字符串
+        function parseDate(dateStr) {
+            if (!dateStr) return new Date();
+            
+            // 尝试多种日期格式解析
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+                return date;
+            }
+            
+            return new Date();
+        }
+        
+        // 更新今日信息
+        function updateTodayInfo() {
+            const now = new Date();
+            const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const dayOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
+            const lunarDate = getLunarDate(now);
+            
+            elements.todayInfo.innerHTML = `
+                <div class="font-medium">${formattedDate}</div>
+                <div>${dayOfWeek}</div>
+                <div class="text-xs mt-1">${lunarDate}</div>
+            `;
+        }
+        
+        // 农历日期计算功能（更准确的实现）
+        function getLunarDate(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            
+            // 农历月份名称
+            const lunarMonths = ['', '正月', '二月', '三月', '四月', '五月', '六月',
+                               '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            
+            // 农历日期名称
+            const lunarDays = ['', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
+                             '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
+                             '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
+            
+            // 2026年农历日期映射（根据用户反馈调整）
+            const lunarMap2026 = {
+                '2026-02-16': '正月初一', '2026-02-17': '正月初二', '2026-02-18': '正月初三', '2026-02-19': '正月初四', '2026-02-20': '正月初五',
+                '2026-02-21': '正月初六', '2026-02-22': '正月初七', '2026-02-23': '正月初八', '2026-02-24': '正月初九', '2026-02-25': '正月初十',
+                '2026-02-26': '正月十一', '2026-02-27': '正月十二', '2026-02-28': '正月十三', '2026-03-01': '正月十四', '2026-03-02': '正月十五',
+                '2026-03-03': '正月十六', '2026-03-04': '正月十七', '2026-03-05': '正月十八', '2026-03-06': '正月十九', '2026-03-07': '正月二十',
+                '2026-03-08': '正月廿一', '2026-03-09': '正月廿二', '2026-03-10': '正月廿三', '2026-03-11': '正月廿四', '2026-03-12': '正月廿五',
+                '2026-03-13': '正月廿六', '2026-03-14': '正月廿七', '2026-03-15': '正月廿八', '2026-03-16': '正月廿九', '2026-03-17': '正月三十',
+                '2026-03-18': '正月三十', '2026-03-19': '二月初一', '2026-03-20': '二月初二', '2026-03-21': '二月初三', '2026-03-22': '二月初四',
+                '2026-03-23': '二月初五', '2026-03-24': '二月初六', '2026-03-25': '二月初七', '2026-03-26': '二月初八', '2026-03-27': '二月初九',
+                '2026-03-28': '二月初十', '2026-03-29': '二月十一', '2026-03-30': '二月十二', '2026-03-31': '二月十三', '2026-04-01': '二月十四',
+                '2026-04-02': '二月十五', '2026-04-03': '二月十六', '2026-04-04': '二月十七', '2026-04-05': '二月十八', '2026-04-06': '二月十九',
+                '2026-04-07': '二月二十', '2026-04-08': '二月廿一', '2026-04-09': '二月廿二', '2026-04-10': '二月廿三', '2026-04-11': '二月廿四',
+                '2026-04-12': '二月廿五', '2026-04-13': '二月廿六', '2026-04-14': '二月廿七', '2026-04-15': '二月廿八', '2026-04-16': '二月廿九',
+                '2026-04-17': '三月初一', '2026-04-18': '三月初二', '2026-04-19': '三月初三', '2026-04-20': '三月初四', '2026-04-21': '三月初五',
+                '2026-04-22': '三月初六', '2026-04-23': '三月初七', '2026-04-24': '三月初八', '2026-04-25': '三月初九', '2026-04-26': '三月初十',
+                '2026-04-27': '三月十一', '2026-04-28': '三月十二', '2026-04-29': '三月十三', '2026-04-30': '三月十四', '2026-05-01': '三月十五',
+                '2026-05-02': '三月十六', '2026-05-03': '三月十七', '2026-05-04': '三月十八', '2026-05-05': '三月十九', '2026-05-06': '三月二十',
+                '2026-05-07': '三月廿一', '2026-05-08': '三月廿二', '2026-05-09': '三月廿三', '2026-05-10': '三月廿四', '2026-05-11': '三月廿五',
+                '2026-05-12': '三月廿六', '2026-05-13': '三月廿七', '2026-05-14': '三月廿八', '2026-05-15': '三月廿九', '2026-05-16': '四月初一',
+                '2026-05-17': '四月初二', '2026-05-18': '四月初三', '2026-05-19': '四月初四', '2026-05-20': '四月初五', '2026-05-21': '四月初六',
+                '2026-05-22': '四月初七', '2026-05-23': '四月初八', '2026-05-24': '四月初九', '2026-05-25': '四月初十', '2026-05-26': '四月十一',
+                '2026-05-27': '四月十二', '2026-05-28': '四月十三', '2026-05-29': '四月十四', '2026-05-30': '四月十五', '2026-05-31': '四月十六',
+                '2026-06-01': '四月十七', '2026-06-02': '四月十八', '2026-06-03': '四月十九', '2026-06-04': '四月二十', '2026-06-05': '四月廿一',
+                '2026-06-06': '四月廿二', '2026-06-07': '四月廿三', '2026-06-08': '四月廿四', '2026-06-09': '四月廿五', '2026-06-10': '四月廿六',
+                '2026-06-11': '四月廿七', '2026-06-12': '四月廿八', '2026-06-13': '四月廿九', '2026-06-14': '五月初一', '2026-06-15': '五月初二',
+                '2026-06-16': '五月初三', '2026-06-17': '五月初四', '2026-06-18': '五月初五', '2026-06-19': '五月初六', '2026-06-20': '五月初七',
+                '2026-06-21': '五月初八', '2026-06-22': '五月初九', '2026-06-23': '五月初十', '2026-06-24': '五月十一', '2026-06-25': '五月十二',
+                '2026-06-26': '五月十三', '2026-06-27': '五月十四', '2026-06-28': '五月十五', '2026-06-29': '五月十六', '2026-06-30': '五月十七',
+                '2026-07-01': '五月十八', '2026-07-02': '五月十九', '2026-07-03': '五月二十', '2026-07-04': '五月廿一', '2026-07-05': '五月廿二',
+                '2026-07-06': '五月廿三', '2026-07-07': '五月廿四', '2026-07-08': '五月廿五', '2026-07-09': '五月廿六', '2026-07-10': '五月廿七',
+                '2026-07-11': '五月廿八', '2026-07-12': '五月廿九', '2026-07-13': '六月初一', '2026-07-14': '六月初二', '2026-07-15': '六月初三',
+                '2026-07-16': '六月初四', '2026-07-17': '六月初五', '2026-07-18': '六月初六', '2026-07-19': '六月初七', '2026-07-20': '六月初八',
+                '2026-07-21': '六月初九', '2026-07-22': '六月初十', '2026-07-23': '六月十一', '2026-07-24': '六月十二', '2026-07-25': '六月十三',
+                '2026-07-26': '六月十四', '2026-07-27': '六月十五', '2026-07-28': '六月十六', '2026-07-29': '六月十七', '2026-07-30': '六月十八',
+                '2026-07-31': '六月十九', '2026-08-01': '六月二十', '2026-08-02': '六月廿一', '2026-08-03': '六月廿二', '2026-08-04': '六月廿三',
+                '2026-08-05': '六月廿四', '2026-08-06': '六月廿五', '2026-08-07': '六月廿六', '2026-08-08': '六月廿七', '2026-08-09': '六月廿八',
+                '2026-08-10': '六月廿九', '2026-08-11': '七月初一', '2026-08-12': '七月初二', '2026-08-13': '七月初三', '2026-08-14': '七月初四',
+                '2026-08-15': '七月初五', '2026-08-16': '七月初六', '2026-08-17': '七月初七', '2026-08-18': '七月初八', '2026-08-19': '七月初九',
+                '2026-08-20': '七月初十', '2026-08-21': '七月十一', '2026-08-22': '七月十二', '2026-08-23': '七月十三', '2026-08-24': '七月十四',
+                '2026-08-25': '七月十五', '2026-08-26': '七月十六', '2026-08-27': '七月十七', '2026-08-28': '七月十八', '2026-08-29': '七月十九',
+                '2026-08-30': '七月二十', '2026-08-31': '七月廿一', '2026-09-01': '七月廿二', '2026-09-02': '七月廿三', '2026-09-03': '七月廿四',
+                '2026-09-04': '七月廿五', '2026-09-05': '七月廿六', '2026-09-06': '七月廿七', '2026-09-07': '七月廿八', '2026-09-08': '七月廿九',
+                '2026-09-09': '八月初一', '2026-09-10': '八月初二', '2026-09-11': '八月初三', '2026-09-12': '八月初四', '2026-09-13': '八月初五',
+                '2026-09-14': '八月初六', '2026-09-15': '八月初七', '2026-09-16': '八月初八', '2026-09-17': '八月初九', '2026-09-18': '八月初十',
+                '2026-09-19': '八月十一', '2026-09-20': '八月十二', '2026-09-21': '八月十三', '2026-09-22': '八月十四', '2026-09-23': '八月十五',
+                '2026-09-24': '八月十六', '2026-09-25': '八月十七', '2026-09-26': '八月十八', '2026-09-27': '八月十九', '2026-09-28': '八月二十',
+                '2026-09-29': '八月廿一', '2026-09-30': '八月廿二', '2026-10-01': '八月廿三', '2026-10-02': '八月廿四', '2026-10-03': '八月廿五',
+                '2026-10-04': '八月廿六', '2026-10-05': '八月廿七', '2026-10-06': '八月廿八', '2026-10-07': '八月廿九', '2026-10-08': '九月初一',
+                '2026-10-09': '九月初二', '2026-10-10': '九月初三', '2026-10-11': '九月初四', '2026-10-12': '九月初五', '2026-10-13': '九月初六',
+                '2026-10-14': '九月初七', '2026-10-15': '九月初八', '2026-10-16': '九月初九', '2026-10-17': '九月初十', '2026-10-18': '九月十一',
+                '2026-10-19': '九月十二', '2026-10-20': '九月十三', '2026-10-21': '九月十四', '2026-10-22': '九月十五', '2026-10-23': '九月十六',
+                '2026-10-24': '九月十七', '2026-10-25': '九月十八', '2026-10-26': '九月十九', '2026-10-27': '九月二十', '2026-10-28': '九月廿一',
+                '2026-10-29': '九月廿二', '2026-10-30': '九月廿三', '2026-10-31': '九月廿四', '2026-11-01': '九月廿五', '2026-11-02': '九月廿六',
+                '2026-11-03': '九月廿七', '2026-11-04': '九月廿八', '2026-11-05': '九月廿九', '2026-11-06': '十月初一', '2026-11-07': '十月初二',
+                '2026-11-08': '十月初三', '2026-11-09': '十月初四', '2026-11-10': '十月初五', '2026-11-11': '十月初六', '2026-11-12': '十月初七',
+                '2026-11-13': '十月初八', '2026-11-14': '十月初九', '2026-11-15': '十月初十', '2026-11-16': '十月十一', '2026-11-17': '十月十二',
+                '2026-11-18': '十月十三', '2026-11-19': '十月十四', '2026-11-20': '十月十五', '2026-11-21': '十月十六', '2026-11-22': '十月十七', '2026-11-23': '十月十八',
+                '2026-11-24': '十月十九', '2026-11-25': '十月二十', '2026-11-26': '十月廿一', '2026-11-27': '十月廿二', '2026-11-28': '十月廿三',
+                '2026-11-29': '十月廿四', '2026-11-30': '十月廿五', '2026-12-01': '十月廿六', '2026-12-02': '十月廿七', '2026-12-03': '十月廿八',
+                '2026-12-04': '十月廿九', '2026-12-05': '十一月初一', '2026-12-06': '十一月初二', '2026-12-07': '十一月初三', '2026-12-08': '十一月初四',
+                '2026-12-09': '十一月初五', '2026-12-10': '十一月初六', '2026-12-11': '十一月初七', '2026-12-12': '十一月初八', '2026-12-13': '十一月初九',
+                '2026-12-14': '十一月初十', '2026-12-15': '十一月十一', '2026-12-16': '十一月十二', '2026-12-17': '十一月十三', '2026-12-18': '十一月十四',
+                '2026-12-19': '十一月十五', '2026-12-20': '十一月十六', '2026-12-21': '十一月十七', '2026-12-22': '十一月十八', '2026-12-23': '十一月十九',
+                '2026-12-24': '十一月二十', '2026-12-25': '十一月廿一', '2026-12-26': '十一月廿二', '2026-12-27': '十一月廿三', '2026-12-28': '十一月廿四',
+                '2026-12-29': '十一月廿五', '2026-12-30': '十一月廿六', '2026-12-31': '十一月廿七'
+            };
+            
+            // 格式化日期为YYYY-MM-DD格式
+            const formattedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            // 检查是否在映射表中
+            if (lunarMap2026[formattedDate]) {
+                return lunarMap2026[formattedDate];
+            }
+            
+            // 如果不在映射表中，返回简化计算
+            return '未知';
+        }
+        
+        // 获取天气信息
+        function getWeatherInfo() {
+            return new Promise((resolve, reject) => {
+                // 使用免费的天气API查询天气
+                fetch('https://api.openweathermap.org/data/2.5/weather?q=Beijing&appid=demo&units=metric&lang=zh_cn')
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                        throw new Error('天气API请求失败');
+                    })
+                    .then(data => {
+                        // 转换天气描述
+                        const weatherDesc = {
+                            'Clear': '晴',
+                            'Clouds': '多云',
+                            'Rain': '雨',
+                            'Drizzle': '小雨',
+                            'Thunderstorm': '雷阵雨',
+                            'Snow': '雪',
+                            'Mist': '薄雾',
+                            'Fog': '雾',
+                            'Haze': '霾'
+                        };
+                        
+                        const description = weatherDesc[data.weather[0].main] || data.weather[0].description;
+                        
+                        resolve({
+                            city: data.name,
+                            temperature: Math.round(data.main.temp) + '°C',
+                            description: description,
+                            icon: data.weather[0].icon
+                        });
+                    })
+                    .catch(error => {
+                        // 如果API失败，返回模拟数据
+                        console.log('使用模拟天气数据:', error);
+                        resolve({
+                            city: '北京',
+                            temperature: '22°C',
+                            description: '晴',
+                            icon: 'sunny'
+                        });
+                    });
+            });
+        }
+        
+        // 打开新建日记模态框
+        function openNewDiaryModal() {
+            const now = new Date();
+            currentEditingDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            // 总是创建新日记，不自动合并
+            currentDiaryId = null;
+            elements.diaryId.value = '';
+            elements.diaryContent.value = '';
+            elements.diaryCategory.value = '';
+            elements.diaryTags.value = '';
+            elements.diaryPlan.value = '';
+            elements.diarySummary.value = '';
+            elements.modalTitle.textContent = '新建日记';
+            
+            // 显示当前日期和阴历日期
+            const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const dayOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
+            const lunarDate = getLunarDate(now);
+            
+            elements.dateDisplay.textContent = `${formattedDate} ${dayOfWeek} ${lunarDate}`;
+            
+            // 获取并显示天气信息
+            elements.weatherDisplay.textContent = '正在获取天气信息...';
+            
+            getWeatherInfo().then(weather => {
+                elements.weatherDisplay.innerHTML = `天气：${weather.city} ${weather.temperature} ${weather.description}`;
+                
+                // 保存天气信息到表单
+                if (!document.getElementById('diary-weather')) {
+                    const weatherInput = document.createElement('input');
+                    weatherInput.type = 'hidden';
+                    weatherInput.id = 'diary-weather';
+                    elements.diaryForm.appendChild(weatherInput);
+                }
+                document.getElementById('diary-weather').value = JSON.stringify(weather);
+            });
+            
+            elements.diaryModal.classList.remove('hidden');
+            elements.diaryPlan.focus();
+        }
+        
+        // 打开编辑日记模态框
+        function openEditDiaryModal(id) {
+            const diary = getDiaryById(id);
+            if (diary) {
+                currentDiaryId = id;
+                // 设置当前编辑日期为日记的创建日期
+                const createDate = new Date(diary.createdAt);
+                currentEditingDate = new Date(createDate.getFullYear(), createDate.getMonth(), createDate.getDate());
+                
+                elements.diaryId.value = id;
+                elements.diaryContent.value = diary.content;
+                elements.diaryCategory.value = diary.category || '';
+                elements.diaryTags.value = diary.tags ? diary.tags.join(', ') : '';
+                elements.diaryPlan.value = diary.plan || '';
+                elements.diarySummary.value = diary.summary || '';
+                elements.modalTitle.textContent = '编辑日记';
+                
+                // 显示日记创建日期和阴历日期
+                const formattedDate = `${createDate.getFullYear()}-${String(createDate.getMonth() + 1).padStart(2, '0')}-${String(createDate.getDate()).padStart(2, '0')}`;
+                const dayOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createDate.getDay()];
+                const lunarDate = getLunarDate(createDate);
+                
+                elements.dateDisplay.textContent = `${formattedDate} ${dayOfWeek} ${lunarDate}`;
+                
+                // 显示天气信息
+                if (diary.weather) {
+                    elements.weatherDisplay.innerHTML = `天气：${diary.weather.city} ${diary.weather.temperature} ${diary.weather.description}`;
+                    
+                    // 保存天气信息到表单
+                    if (!document.getElementById('diary-weather')) {
+                        const weatherInput = document.createElement('input');
+                        weatherInput.type = 'hidden';
+                        weatherInput.id = 'diary-weather';
+                        elements.diaryForm.appendChild(weatherInput);
+                    }
+                    document.getElementById('diary-weather').value = JSON.stringify(diary.weather);
+                } else {
+                    elements.weatherDisplay.textContent = '无天气信息';
+                }
+                
+                // 显示日记附件
+                if (diary.attachments && diary.attachments.length > 0) {
+                    // 假设显示第一个附件作为预览
+                    const attachment = diary.attachments[0];
+                    elements.attachmentFilename.textContent = attachment.name;
+                    
+                    // 渲染附件预览
+                    const previewContainer = elements.attachmentPreview;
+                    previewContainer.innerHTML = '';
+                    
+                    if (attachment.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = attachment.data;
+                        img.className = 'max-w-32 max-h-32 rounded-lg object-cover border border-gray-200';
+                        img.alt = attachment.name;
+                        previewContainer.appendChild(img);
+                    } else {
+                        const fileIcon = document.createElement('div');
+                        fileIcon.className = 'flex items-center p-3 bg-gray-100 rounded-lg border border-gray-200';
+                        fileIcon.innerHTML = `
+                            <i class="fas fa-file mr-2 text-gray-500"></i>
+                            <div class="text-sm">
+                                <div>${attachment.name}</div>
+                                <div class="text-xs text-gray-500">${(attachment.size / 1024).toFixed(1)} KB</div>
+                            </div>
+                        `;
+                        previewContainer.appendChild(fileIcon);
+                    }
+                    
+                    // 将附件数据保存到 currentAttachment 变量
+                    const byteCharacters = atob(attachment.data.split(',')[1]);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: attachment.type });
+                    currentAttachment = new File([blob], attachment.name, { type: attachment.type });
+                }
+                
+                elements.diaryModal.classList.remove('hidden');
+                elements.diaryPlan.focus();
+            }
+        }
+        
+        // 关闭日记模态框
+        function closeDiaryModal() {
+            elements.diaryModal.classList.add('hidden');
+        }
+        
+        // 保存日记
+        async function saveDiary(e) {
+            e.preventDefault();
+            
+            const content = elements.diaryContent.value.trim();
+            const category = elements.diaryCategory.value;
+            const tags = elements.diaryTags.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            const plan = elements.diaryPlan.value.trim();
+            const summary = elements.diarySummary.value.trim();
+            const weatherInput = document.getElementById('diary-weather');
+            const weather = weatherInput ? JSON.parse(weatherInput.value) : null;
+            
+            // 使用 currentEditingDate 或当前日期
+            const targetDate = currentEditingDate || new Date();
+            const defaultTitle = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')} 日记`;
+            
+            // 检查是否已有同一天的日记（仅当新建时）
+            let existingDiary = null;
+            if (!currentDiaryId) {
+                const diaries = getDiariesFromStorage();
+                existingDiary = diaries.find(d => {
+                    const diaryDate = new Date(d.createdAt);
+                    const diaryDateOnly = new Date(diaryDate.getFullYear(), diaryDate.getMonth(), diaryDate.getDate());
+                    const targetDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+                    return diaryDateOnly.getTime() === targetDateOnly.getTime();
+                });
+            }
+            
+            // 创建 createdAt 日期，使用 targetDate 的日期但当前时间
+            const createdAtDate = new Date(targetDate);
+            const now = new Date();
+            if (!currentDiaryId && !existingDiary) {
+                createdAtDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+            }
+            
+            // 处理附件
+            let attachments = [];
+            if (currentAttachment) {
+                try {
+                    const attachment = await saveAttachment(currentAttachment);
+                    attachments = [attachment];
+                } catch (error) {
+                    console.error('保存附件失败:', error);
+                    alert('附件保存失败，请重试');
+                    return;
+                }
+            }
+            
+            const diary = {
+                id: existingDiary ? existingDiary.id : (currentDiaryId || Date.now().toString()),
+                title: existingDiary ? existingDiary.title : defaultTitle,
+                content: existingDiary ? (existingDiary.content + '\n\n' + content) : content,
+                category: existingDiary ? (existingDiary.category || category) : category,
+                tags: existingDiary ? (existingDiary.tags || tags) : tags,
+                plan: existingDiary ? (existingDiary.plan || plan) : plan,
+                summary: existingDiary ? (existingDiary.summary || summary) : summary,
+                weather: existingDiary ? (existingDiary.weather || weather) : weather,
+                attachments: existingDiary ? [...(existingDiary.attachments || []), ...attachments] : attachments,
+                createdAt: existingDiary ? existingDiary.createdAt : createdAtDate.toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            saveDiaryToStorage(diary);
+            loadDiaries();
+            updateCategoryStatistics(); // 更新分类统计
+            closeDiaryModal();
+        }
+        
+        // 保存日记到本地存储
+        function saveDiaryToStorage(diary) {
+            const diaries = getDiariesFromStorage();
+            const index = diaries.findIndex(d => d.id === diary.id);
+            
+            if (index !== -1) {
+                diaries[index] = diary;
+            } else {
+                diaries.push(diary);
+            }
+            
+            localStorage.setItem('diaries', JSON.stringify(diaries));
+            // 自动导出到Excel以保持同步
+            exportDiariesToExcel();
+        }
+        
+        // 从本地存储获取日记
+        function getDiariesFromStorage() {
+            const diaries = localStorage.getItem('diaries');
+            return diaries ? JSON.parse(diaries) : [];
+        }
+        
+        // 根据ID获取日记
+        function getDiaryById(id) {
+            const diaries = getDiariesFromStorage();
+            return diaries.find(d => d.id === id);
+        }
+        
+        // 删除日记
+        function deleteDiary(id) {
+            if (confirm('确定要删除这篇日记吗？')) {
+                const diaries = getDiariesFromStorage();
+                const filteredDiaries = diaries.filter(d => d.id !== id);
+                localStorage.setItem('diaries', JSON.stringify(filteredDiaries));
+                loadDiaries();
+                updateCategoryStatistics(); // 更新分类统计
+                // 自动导出到Excel以保持同步
+                exportDiariesToExcel();
+            }
+        }
+        
+        // 切换视图
+        function switchView(view) {
+            currentView = view;
+            
+            // 更新按钮状态
+            if (view === 'card') {
+                elements.viewCard.classList.add('border-primary', 'bg-primary', 'text-white');
+                elements.viewCard.classList.remove('border-gray-200', 'hover:bg-gray-50');
+                elements.viewTimeline.classList.remove('border-primary', 'bg-primary', 'text-white');
+                elements.viewTimeline.classList.add('border-gray-200', 'hover:bg-gray-50');
+            } else {
+                elements.viewTimeline.classList.add('border-primary', 'bg-primary', 'text-white');
+                elements.viewTimeline.classList.remove('border-gray-200', 'hover:bg-gray-50');
+                elements.viewCard.classList.remove('border-primary', 'bg-primary', 'text-white');
+                elements.viewCard.classList.add('border-gray-200', 'hover:bg-gray-50');
+            }
+            
+            loadDiaries();
+        }
+        
+        // 切换排序
+        function switchSort(sort) {
+            currentSort = sort;
+            
+            // 更新按钮状态
+            if (sort === 'newest') {
+                elements.sortNewest.classList.add('border-primary', 'bg-primary', 'text-white');
+                elements.sortNewest.classList.remove('border-gray-200', 'hover:bg-gray-50');
+                elements.sortOldest.classList.remove('border-primary', 'bg-primary', 'text-white');
+                elements.sortOldest.classList.add('border-gray-200', 'hover:bg-gray-50');
+            } else {
+                elements.sortOldest.classList.add('border-primary', 'bg-primary', 'text-white');
+                elements.sortOldest.classList.remove('border-gray-200', 'hover:bg-gray-50');
+                elements.sortNewest.classList.remove('border-primary', 'bg-primary', 'text-white');
+                elements.sortNewest.classList.add('border-gray-200', 'hover:bg-gray-50');
+            }
+            
+            loadDiaries();
+        }
+        
+        // 加载日记列表
+        function loadDiaries() {
+            const diaries = getDiariesFromStorage();
+            
+            if (diaries.length === 0) {
+                elements.diaryList.innerHTML = `
+                    <div class="text-center py-16">
+                        <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                            <i class="fas fa-book-open text-4xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-xl font-medium mb-2">暂无日记</h3>
+                        <p class="text-gray-500 mb-6">点击「新建日记」开始记录你的生活</p>
+                        <button id="empty-state-new-btn" class="gradient-bg text-white py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2 mx-auto btn">
+                            <i class="fas fa-plus"></i>
+                            <span>新建日记</span>
+                        </button>
+                    </div>
+                `;
+                
+                // 重新绑定事件
+                document.getElementById('empty-state-new-btn').addEventListener('click', openNewDiaryModal);
+                return;
+            }
+            
+            // 根据当前排序方式排序
+            if (currentSort === 'newest') {
+                diaries.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            } else {
+                diaries.sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt));
+            }
+            
+            // 根据当前视图渲染
+            if (currentView === 'card') {
+                renderCardView(diaries);
+            } else {
+                renderTimelineView(diaries);
+            }
+        }
+        
+        // 渲染卡片视图
+        function renderCardView(diaries) {
+            elements.diaryList.className = 'space-y-6';
+            elements.diaryList.innerHTML = diaries.map((diary, index) => {
+                const date = new Date(diary.createdAt);
+                const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                const lunarDate = getLunarDate(date);
+                
+                return `
+                    <div class="diary-card bg-white border border-gray-200 rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: ${index * 0.1}s">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-display font-semibold text-xl">${diary.title}</h3>
+                            <div class="flex space-x-2">
+                                <button onclick="openEditDiaryModal('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteDiary('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-4 line-clamp-3">${diary.content}</p>
+                        ${diary.plan ? `
+                            <div class="mb-3">
+                                <h4 class="text-sm font-medium text-gray-700 mb-1">当日计划</h4>
+                                <p class="text-sm text-gray-600">${diary.plan}</p>
+                            </div>
+                        ` : ''}
+                        ${diary.summary ? `
+                            <div class="mb-3">
+                                <h4 class="text-sm font-medium text-gray-700 mb-1">当日总结</h4>
+                                <p class="text-sm text-gray-600">${diary.summary}</p>
+                            </div>
+                        ` : ''}
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center flex-wrap gap-2">
+                                ${diary.category ? `
+                                    <span class="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded-full">
+                                        ${diary.category}
+                                    </span>
+                                ` : ''}
+                                ${diary.tags && diary.tags.length > 0 ? diary.tags.map(tag => `
+                                    <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                        ${tag}
+                                    </span>
+                                `).join('') : ''}
+                                ${diary.weather ? `
+                                    <span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full flex items-center">
+                                        <i class="fas fa-cloud-sun mr-1"></i>
+                                        ${diary.weather.description} ${diary.weather.temperature}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm text-gray-500 block">${formattedDate}</span>
+                                <span class="text-xs text-gray-400 block">${lunarDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 渲染时间线视图
+        function renderTimelineView(diaries) {
+            elements.diaryList.className = 'timeline';
+            elements.diaryList.innerHTML = diaries.map((diary, index) => {
+                const date = new Date(diary.createdAt);
+                const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                const lunarDate = getLunarDate(date);
+                
+                return `
+                    <div class="timeline-item animate-fade-in" style="animation-delay: ${index * 0.1}s">
+                        <div class="timeline-date">
+                            <div>${formattedDate}</div>
+                            <div>${lunarDate}</div>
+                        </div>
+                        <div class="timeline-content">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <h3 class="font-display font-semibold text-xl">${diary.title}</h3>
+                                        <div class="flex space-x-2">
+                                            <button onclick="openEditDiaryModal('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button onclick="deleteDiary('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-600 mb-4">${diary.content}</p>
+                                    ${diary.plan ? `
+                                        <div class="mb-3">
+                                            <h4 class="text-sm font-medium text-gray-700 mb-1">当日计划</h4>
+                                            <p class="text-sm text-gray-600">${diary.plan}</p>
+                                        </div>
+                                    ` : ''}
+                                    ${diary.summary ? `
+                                        <div class="mb-3">
+                                            <h4 class="text-sm font-medium text-gray-700 mb-1">当日总结</h4>
+                                            <p class="text-sm text-gray-600">${diary.summary}</p>
+                                        </div>
+                                    ` : ''}
+                                    ${diary.attachments && diary.attachments.length > 0 ? `
+                                        <div class="mb-3">
+                                            <h4 class="text-sm font-medium text-gray-700 mb-1">附件</h4>
+                                            <div class="flex flex-wrap gap-2">
+                                                ${diary.attachments.map(attachment => `
+                                                    ${attachment.type.startsWith('image/') ? `
+                                                        <img src="${attachment.data}" alt="${attachment.name}" class="max-w-24 max-h-24 rounded-lg object-cover border border-gray-200" onclick="viewAttachment('${attachment.data}')">
+                                                    ` : `
+                                                        <div class="flex items-center p-2 bg-gray-100 rounded-lg text-sm text-gray-700 max-w-full">
+                                                            <i class="fas fa-file mr-2"></i>
+                                                            <span class="truncate">${attachment.name}</span>
+                                                        </div>
+                                                    `}
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                            <div class="flex flex-wrap items-center gap-2">
+                                ${diary.category ? `
+                                    <span class="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded-full">
+                                        ${diary.category}
+                                    </span>
+                                ` : ''}
+                                ${diary.tags && diary.tags.length > 0 ? diary.tags.map(tag => `
+                                    <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                        ${tag}
+                                    </span>
+                                `).join('') : ''}
+                                ${diary.weather ? `
+                                    <span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full flex items-center">
+                                        <i class="fas fa-cloud-sun mr-1"></i>
+                                        ${diary.weather.description} ${diary.weather.temperature}
+                                    </span>
+                                ` : ''}
+                                <span class="text-xs text-gray-500">${time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 搜索日记
+        function searchDiaries() {
+            const searchTerm = elements.searchInput.value.toLowerCase();
+            const diaries = getDiariesFromStorage();
+            
+            if (!searchTerm) {
+                loadDiaries();
+                return;
+            }
+            
+            const filteredDiaries = diaries.filter(diary => 
+                diary.title.toLowerCase().includes(searchTerm) || 
+                diary.content.toLowerCase().includes(searchTerm) ||
+                (diary.category && diary.category.toLowerCase().includes(searchTerm)) ||
+                (diary.tags && diary.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+            );
+            
+            if (filteredDiaries.length === 0) {
+                elements.diaryList.innerHTML = `
+                    <div class="text-center py-16">
+                        <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                            <i class="fas fa-search text-4xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-xl font-medium mb-2">没有找到相关日记</h3>
+                        <p class="text-gray-500">尝试使用其他关键词搜索</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 根据当前视图渲染搜索结果
+            if (currentView === 'card') {
+                elements.diaryList.className = 'space-y-6';
+                elements.diaryList.innerHTML = filteredDiaries.map((diary, index) => {
+                    const date = new Date(diary.createdAt);
+                    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    const lunarDate = getLunarDate(date);
+                    
+                    return `
+                        <div class="diary-card bg-white border border-gray-200 rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: ${index * 0.1}s">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="font-display font-semibold text-xl">${diary.title}</h3>
+                                <div class="flex space-x-2">
+                                    <button onclick="openEditDiaryModal('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteDiary('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 mb-4 line-clamp-3">${diary.content}</p>
+                            ${diary.plan ? `
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-1">当日计划</h4>
+                                    <p class="text-sm text-gray-600">${diary.plan}</p>
+                                </div>
+                            ` : ''}
+                            ${diary.summary ? `
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-1">当日总结</h4>
+                                    <p class="text-sm text-gray-600">${diary.summary}</p>
+                                </div>
+                            ` : ''}
+                            ${diary.attachments && diary.attachments.length > 0 ? `
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-1">附件</h4>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${diary.attachments.map(attachment => `
+                                            ${attachment.type.startsWith('image/') ? `
+                                                <img src="${attachment.data}" alt="${attachment.name}" class="max-w-24 max-h-24 rounded-lg object-cover border border-gray-200" onclick="viewAttachment('${attachment.data}')">
+                                            ` : `
+                                                <div class="flex items-center p-2 bg-gray-100 rounded-lg text-sm text-gray-700 max-w-full">
+                                                    <i class="fas fa-file mr-2"></i>
+                                                    <span class="truncate">${attachment.name}</span>
+                                                </div>
+                                            `}
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div class="flex items-center flex-wrap gap-2">
+                                    ${diary.category ? `
+                                        <span class="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded-full">
+                                            ${diary.category}
+                                        </span>
+                                    ` : ''}
+                                    ${diary.tags && diary.tags.length > 0 ? diary.tags.map(tag => `
+                                        <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                            ${tag}
+                                        </span>
+                                    `).join('') : ''}
+                                    ${diary.weather ? `
+                                        <span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full flex items-center">
+                                            <i class="fas fa-cloud-sun mr-1"></i>
+                                            ${diary.weather.description} ${diary.weather.temperature}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm text-gray-500 block">${formattedDate}</span>
+                                    <span class="text-xs text-gray-400 block">${lunarDate}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                elements.diaryList.className = 'timeline';
+                elements.diaryList.innerHTML = filteredDiaries.map((diary, index) => {
+                    const date = new Date(diary.createdAt);
+                    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    const lunarDate = getLunarDate(date);
+                    
+                    return `
+                        <div class="timeline-item animate-fade-in" style="animation-delay: ${index * 0.1}s">
+                            <div class="timeline-date">
+                                <div>${formattedDate}</div>
+                                <div>${lunarDate}</div>
+                            </div>
+                            <div class="timeline-content">
+                                <div class="flex justify-between items-start mb-4">
+                                    <h3 class="font-display font-semibold text-xl">${diary.title}</h3>
+                                    <div class="flex space-x-2">
+                                        <button onclick="openEditDiaryModal('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="deleteDiary('${diary.id}')" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="text-gray-600 mb-4">${diary.content}</p>
+                                ${diary.plan ? `
+                                    <div class="mb-3">
+                                        <h4 class="text-sm font-medium text-gray-700 mb-1">当日计划</h4>
+                                        <p class="text-sm text-gray-600">${diary.plan}</p>
+                                    </div>
+                                ` : ''}
+                                ${diary.summary ? `
+                                    <div class="mb-3">
+                                        <h4 class="text-sm font-medium text-gray-700 mb-1">当日总结</h4>
+                                        <p class="text-sm text-gray-600">${diary.summary}</p>
+                                    </div>
+                                ` : ''}
+                                <div class="flex flex-wrap items-center gap-2">
+                                    ${diary.category ? `
+                                        <span class="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded-full">
+                                            ${diary.category}
+                                        </span>
+                                    ` : ''}
+                                    ${diary.tags && diary.tags.length > 0 ? diary.tags.map(tag => `
+                                        <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                            ${tag}
+                                        </span>
+                                    `).join('') : ''}
+                                    ${diary.weather ? `
+                                        <span class="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full flex items-center">
+                                            <i class="fas fa-cloud-sun mr-1"></i>
+                                            ${diary.weather.description} ${diary.weather.temperature}
+                                        </span>
+                                    ` : ''}
+                                    <span class="text-xs text-gray-500">${time}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+        
+        // 切换主题
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.toggle('dark');
+            const themeIcon = elements.themeToggle.querySelector('i');
+            
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+                themeIcon.classList.remove('text-gray-600');
+                themeIcon.classList.add('text-yellow-400');
+                
+                // 保存主题
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+                themeIcon.classList.remove('text-yellow-400');
+                themeIcon.classList.add('text-gray-600');
+                
+                // 保存主题
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        
+        // 根据日期查找或创建日记
+        function goToDateDiary() {
+            const selectedDate = elements.datePicker.value;
+            if (!selectedDate) {
+                alert('请选择日期');
+                return;
+            }
+            
+            const targetDate = new Date(selectedDate);
+            // 设置当前编辑日期为选择的日期（只保留日期部分）
+            currentEditingDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+            
+            const diaries = getDiariesFromStorage();
+            
+            // 查找该日期的日记
+            const diary = diaries.find(d => {
+                const diaryDate = new Date(d.createdAt);
+                const diaryDateOnly = new Date(diaryDate.getFullYear(), diaryDate.getMonth(), diaryDate.getDate());
+                return diaryDateOnly.getTime() === currentEditingDate.getTime();
+            });
+            
+            if (diary) {
+                // 如果找到该日期的日记，打开编辑模态框
+                openEditDiaryModal(diary.id);
+            } else {
+                // 如果没有找到该日期的日记，创建新日记
+                currentDiaryId = null;
+                elements.diaryId.value = '';
+                elements.diaryContent.value = '';
+                elements.diaryCategory.value = '';
+                elements.diaryTags.value = '';
+                elements.diaryPlan.value = '';
+                elements.diarySummary.value = '';
+                elements.modalTitle.textContent = '新建日记';
+                
+                // 显示选择的日期和阴历日期
+                const formattedDate = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+                const dayOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][targetDate.getDay()];
+                const lunarDate = getLunarDate(targetDate);
+                
+                elements.dateDisplay.textContent = `${formattedDate} ${dayOfWeek} ${lunarDate}`;
+                
+                // 获取并显示天气信息
+                elements.weatherDisplay.textContent = '正在获取天气信息...';
+                
+                getWeatherInfo().then(weather => {
+                    elements.weatherDisplay.innerHTML = `天气：${weather.city} ${weather.temperature} ${weather.description}`;
+                    
+                    // 保存天气信息到表单
+                    if (!document.getElementById('diary-weather')) {
+                        const weatherInput = document.createElement('input');
+                        weatherInput.type = 'hidden';
+                        weatherInput.id = 'diary-weather';
+                        elements.diaryForm.appendChild(weatherInput);
+                    }
+                    document.getElementById('diary-weather').value = JSON.stringify(weather);
+                });
+                
+                elements.diaryModal.classList.remove('hidden');
+                elements.diaryPlan.focus();
+            }
+        }
+        
+        // 加载主题
+        function loadTheme() {
+            const theme = localStorage.getItem('theme') || 'light';
+            if (theme === 'dark') {
+                elements.themeToggle.click();
+            }
+        }
+        
+        // 打开年度计划编辑模态框
+        function openYearPlanModal() {
+            const year = elements.yearSelector.value;
+            const planKey = `year-plan-${year}`;
+            const summaryKey = `year-summary-${year}`;
+            const plan = localStorage.getItem(planKey);
+            const summary = localStorage.getItem(summaryKey);
+            
+            elements.yearPlanInput.value = plan || '';
+            elements.yearSummaryInput.value = summary || '';
+            
+            // 更新模态框标题，显示当前编辑的年份
+            document.getElementById('year-plan-modal-title').textContent = `编辑${year}年计划`;
+            
+            elements.yearPlanModal.classList.remove('hidden');
+        }
+        
+        // 关闭年度计划编辑模态框
+        function closeYearPlanModal() {
+            elements.yearPlanModal.classList.add('hidden');
+        }
+        
+        // 保存年度计划
+        function saveYearPlan(e) {
+            e.preventDefault();
+            
+            const year = elements.yearSelector.value;
+            const planKey = `year-plan-${year}`;
+            const summaryKey = `year-summary-${year}`;
+            const plan = elements.yearPlanInput.value.trim();
+            const summary = elements.yearSummaryInput.value.trim();
+            
+            localStorage.setItem(planKey, plan);
+            localStorage.setItem(summaryKey, summary);
+            
+            closeYearPlanModal();
+        }
+        
+        // 加载选中月份的计划
+        function loadSelectedMonthPlan() {
+            const year = elements.yearSelector.value;
+            const month = elements.monthSelector.value;
+            const monthKey = `yearly-plan-${year}-${String(month).padStart(2, '0')}`;
+            const plan = localStorage.getItem(monthKey);
+            
+            if (plan) {
+                elements.selectedMonthPlan.textContent = plan;
+            } else {
+                elements.selectedMonthPlan.textContent = '点击编辑按钮添加该月计划';
+            }
+        }
+        
+        // 打开年度计划编辑模态框
+        function openYearlyPlanModal() {
+            const year = elements.yearSelector.value;
+            const month = elements.monthSelector.value;
+            const planKey = `yearly-plan-${year}-${String(month).padStart(2, '0')}`;
+            const summaryKey = `yearly-summary-${year}-${String(month).padStart(2, '0')}`;
+            const plan = localStorage.getItem(planKey);
+            const summary = localStorage.getItem(summaryKey);
+            
+            elements.yearlyPlanInput.value = plan || '';
+            elements.yearlySummaryInput.value = summary || '';
+            
+            // 更新模态框标题，显示当前编辑的月份
+            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            document.getElementById('yearly-plan-modal-title').textContent = `编辑${monthNames[month - 1]}计划`;
+            
+            elements.yearlyPlanModal.classList.remove('hidden');
+        }
+        
+        // 关闭年度计划编辑模态框
+        function closeYearlyPlanModal() {
+            elements.yearlyPlanModal.classList.add('hidden');
+        }
+        
+        // 保存年度计划
+        function saveYearlyPlan(e) {
+            e.preventDefault();
+            
+            const year = elements.yearSelector.value;
+            const month = elements.monthSelector.value;
+            const planKey = `yearly-plan-${year}-${String(month).padStart(2, '0')}`;
+            const summaryKey = `yearly-summary-${year}-${String(month).padStart(2, '0')}`;
+            const plan = elements.yearlyPlanInput.value.trim();
+            const summary = elements.yearlySummaryInput.value.trim();
+            
+            localStorage.setItem(planKey, plan);
+            localStorage.setItem(summaryKey, summary);
+            
+            elements.selectedMonthPlan.textContent = plan || '点击编辑按钮添加该月计划';
+            closeYearlyPlanModal();
+        }
+    </script>
+    </div> <!-- 主应用容器结束 -->
+</body>
+</html>
