@@ -13,15 +13,6 @@
         #auth-container {
             display: block;
         }
-        
-        @media (max-width: 768px) {
-            #app-container {
-                display: block;
-            }
-            #auth-container {
-                display: none;
-            }
-        }
     </style>
     <!-- TailwindCSS 3.0+ -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1130,15 +1121,15 @@
         
         // 显示主应用
         function showMainApp() {
-            elements.authContainer.classList.add('hidden');
-            elements.appContainer.classList.remove('hidden');
+            elements.authContainer.style.display = 'none';
+            elements.appContainer.style.display = 'block';
             initApp();
         }
         
         // 显示认证页面
         function showAuthPage() {
-            elements.authContainer.classList.remove('hidden');
-            elements.appContainer.classList.add('hidden');
+            elements.authContainer.style.display = 'block';
+            elements.appContainer.style.display = 'none';
         }
         
         // 数据隔离函数 - 获取当前用户的数据键
