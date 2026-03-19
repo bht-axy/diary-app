@@ -13,15 +13,6 @@
         #auth-container {
             display: block;
         }
-        
-        @media (max-width: 768px) {
-            #app-container {
-                display: block;
-            }
-            #auth-container {
-                display: none;
-            }
-        }
     </style>
     <!-- TailwindCSS 3.0+ -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1051,19 +1042,33 @@
                 return;
             }
             
-            // 获取用户数据
-            const users = getUsersFromStorage();
-            
-            // 检查用户是否存在
-            const user = users.find(u => u.username === username && u.password === password);
-            
-            if (user) {
-                currentUser = user;
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                showMainApp();
-            } else {
-                alert('用户名或密码错误');
-            }
+            // 调用后端登录API
+            fetch('http://localhost:3000/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('登录失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('currentUser', JSON.stringify(data.user));
+                    showMainApp();
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('登录错误:', error);
+                alert('登录失败，请检查网络连接');
+            });
         }
         
         // 注册
@@ -1082,176 +1087,278 @@
                 return;
             }
             
-            // 获取用户数据
-            const users = getUsersFromStorage();
-            
-            // 检查用户名是否已存在
-            if (users.some(u => u.username === username)) {
-                alert('用户名已存在');
-                return;
-            }
-            
-            // 创建新用户
-            const newUser = {
-                id: Date.now().toString(),
-                username: username,
-                password: password
-            };
-            
-            // 保存用户数据
-            users.push(newUser);
-            localStorage.setItem('users', JSON.stringify(users));
-            
-            // 登录新用户
-            currentUser = newUser;
-            localStorage.setItem('currentUser', JSON.stringify(newUser));
-            showMainApp();
-        }
-        
-        // 获取用户数据
-        function getUsersFromStorage() {
-            const users = localStorage.getItem('users');
-            if (users) {
-                return JSON.parse(users);
-            }
-            
-            // 默认用户
-            const defaultUsers = [
-                {
-                    id: '1',
-                    username: 'admin',
-                    password: 'admin123'
+            // 调用后端注册API
+            fetch('http://localhost:3000/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('注册失败');
                 }
-            ];
-            
-            localStorage.setItem('users', JSON.stringify(defaultUsers));
-            return defaultUsers;
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('currentUser', JSON.stringify(data.user));
+                    showMainApp();
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('注册错误:', error);
+                alert('注册失败，请检查网络连接');
+            });
         }
         
         // 显示主应用
         function showMainApp() {
-            elements.authContainer.classList.add('hidden');
-            elements.appContainer.classList.remove('hidden');
+            elements.authContainer.style.display = 'none';
+            elements.appContainer.style.display = 'block';
             initApp();
         }
         
         // 显示认证页面
         function showAuthPage() {
-            elements.authContainer.classList.remove('hidden');
-            elements.appContainer.classList.add('hidden');
+            elements.authContainer.style.display = 'block';
+            elements.appContainer.style.display = 'none';
         }
         
-        // 数据隔离函数 - 获取当前用户的数据键
-        function getUserDataKey(key) {
-            if (!currentUser) return key;
-            return `${currentUser.username}-${key}`;
-        }
-        
-        // 修改存储函数以支持用户数据隔离
+        // 获取日记数据
         function getDiariesFromStorage() {
-            const key = getUserDataKey('diaries');
-            const diaries = localStorage.getItem(key);
-            return diaries ? JSON.parse(diaries) : [];
+            return fetch(`http://localhost:3000/api/diaries/${currentUser.id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取日记数据失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        return data.data;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取日记数据错误:', error);
+                    return [];
+                });
         }
         
+        // 保存日记数据
         function saveDiaryToStorage(diary) {
-            const key = getUserDataKey('diaries');
-            const diaries = getDiariesFromStorage();
-            const index = diaries.findIndex(d => d.id === diary.id);
-            
-            if (index !== -1) {
-                diaries[index] = diary;
-            } else {
-                diaries.push(diary);
-            }
-            
-            localStorage.setItem(key, JSON.stringify(diaries));
-            // 删除自动导出功能，改为手动导出
+            return fetch('http://localhost:3000/api/diaries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    userId: currentUser.id, 
+                    diary: diary 
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('保存日记失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    return true;
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('保存日记错误:', error);
+                return false;
+            });
         }
         
-        // 修改其他存储函数以支持用户数据隔离
+        // 获取月度计划
         function loadSelectedMonthPlan() {
             const year = elements.yearSelector.value;
             const month = elements.monthSelector.value;
-            const monthKey = getUserDataKey(`yearly-plan-${year}-${String(month).padStart(2, '0')}`);
-            const plan = localStorage.getItem(monthKey);
             
-            if (plan) {
-                elements.selectedMonthPlan.textContent = plan;
-            } else {
-                elements.selectedMonthPlan.textContent = '点击编辑按钮添加该月计划';
-            }
+            return fetch(`http://localhost:3000/api/month-plans/${currentUser.id}/${year}/${month}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取月度计划失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.data) {
+                        elements.selectedMonthPlan.textContent = data.data.plan;
+                    } else {
+                        elements.selectedMonthPlan.textContent = '点击编辑按钮添加该月计划';
+                    }
+                })
+                .catch(error => {
+                    console.error('获取月度计划错误:', error);
+                    elements.selectedMonthPlan.textContent = '点击编辑按钮添加该月计划';
+                });
         }
         
+        // 保存月度计划
         function saveYearlyPlan(e) {
             e.preventDefault();
             
             const year = elements.yearSelector.value;
             const month = elements.monthSelector.value;
-            const planKey = getUserDataKey(`yearly-plan-${year}-${String(month).padStart(2, '0')}`);
-            const summaryKey = getUserDataKey(`yearly-summary-${year}-${String(month).padStart(2, '0')}`);
             const plan = elements.yearlyPlanInput.value.trim();
             const summary = elements.yearlySummaryInput.value.trim();
             
-            localStorage.setItem(planKey, plan);
-            localStorage.setItem(summaryKey, summary);
-            
-            elements.selectedMonthPlan.textContent = plan || '点击编辑按钮添加该月计划';
-            closeYearlyPlanModal();
+            return fetch('http://localhost:3000/api/month-plans', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    userId: currentUser.id, 
+                    year: parseInt(year), 
+                    month: parseInt(month), 
+                    plan: plan, 
+                    summary: summary 
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('保存月度计划失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    elements.selectedMonthPlan.textContent = plan || '点击编辑按钮添加该月计划';
+                    closeYearlyPlanModal();
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('保存月度计划错误:', error);
+                alert('保存月度计划失败');
+            });
         }
         
+        // 打开月度计划编辑模态框
         function openYearlyPlanModal() {
             const year = elements.yearSelector.value;
             const month = elements.monthSelector.value;
-            const planKey = getUserDataKey(`yearly-plan-${year}-${String(month).padStart(2, '0')}`);
-            const summaryKey = getUserDataKey(`yearly-summary-${year}-${String(month).padStart(2, '0')}`);
-            const plan = localStorage.getItem(planKey);
-            const summary = localStorage.getItem(summaryKey);
             
-            elements.yearlyPlanInput.value = plan || '';
-            elements.yearlySummaryInput.value = summary || '';
-            
-            // 更新模态框标题，显示当前编辑的月份
-            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
-            document.getElementById('yearly-plan-modal-title').textContent = `编辑${monthNames[month - 1]}计划`;
-            
-            elements.yearlyPlanModal.classList.remove('hidden');
+            fetch(`http://localhost:3000/api/month-plans/${currentUser.id}/${year}/${month}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取月度计划失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.data) {
+                        elements.yearlyPlanInput.value = data.data.plan;
+                        elements.yearlySummaryInput.value = data.data.summary;
+                    } else {
+                        elements.yearlyPlanInput.value = '';
+                        elements.yearlySummaryInput.value = '';
+                    }
+                    
+                    // 更新模态框标题，显示当前编辑的月份
+                    const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+                    document.getElementById('yearly-plan-modal-title').textContent = `编辑${monthNames[month - 1]}计划`;
+                    
+                    elements.yearlyPlanModal.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('获取月度计划错误:', error);
+                    elements.yearlyPlanInput.value = '';
+                    elements.yearlySummaryInput.value = '';
+                    elements.yearlyPlanModal.classList.remove('hidden');
+                });
         }
         
+        // 打开年度计划编辑模态框
         function openYearPlanModal() {
             const year = elements.yearSelector.value;
-            const planKey = getUserDataKey(`year-plan-${year}`);
-            const summaryKey = getUserDataKey(`year-summary-${year}`);
-            const plan = localStorage.getItem(planKey);
-            const summary = localStorage.getItem(summaryKey);
             
-            elements.yearPlanInput.value = plan || '';
-            elements.yearSummaryInput.value = summary || '';
-            
-            // 更新模态框标题，显示当前编辑的年份
-            document.getElementById('year-plan-modal-title').textContent = `编辑${year}年计划`;
-            
-            elements.yearPlanModal.classList.remove('hidden');
+            fetch(`http://localhost:3000/api/year-plans/${currentUser.id}/${year}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取年度计划失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.data) {
+                        elements.yearPlanInput.value = data.data.plan;
+                        elements.yearSummaryInput.value = data.data.summary;
+                    } else {
+                        elements.yearPlanInput.value = '';
+                        elements.yearSummaryInput.value = '';
+                    }
+                    
+                    // 更新模态框标题，显示当前编辑的年份
+                    document.getElementById('year-plan-modal-title').textContent = `编辑${year}年计划`;
+                    
+                    elements.yearPlanModal.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('获取年度计划错误:', error);
+                    elements.yearPlanInput.value = '';
+                    elements.yearSummaryInput.value = '';
+                    elements.yearPlanModal.classList.remove('hidden');
+                });
         }
         
+        // 保存年度计划
         function saveYearPlan(e) {
             e.preventDefault();
             
             const year = elements.yearSelector.value;
-            const planKey = getUserDataKey(`year-plan-${year}`);
-            const summaryKey = getUserDataKey(`year-summary-${year}`);
             const plan = elements.yearPlanInput.value.trim();
             const summary = elements.yearSummaryInput.value.trim();
             
-            localStorage.setItem(planKey, plan);
-            localStorage.setItem(summaryKey, summary);
-            
-            closeYearPlanModal();
+            return fetch('http://localhost:3000/api/year-plans', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    userId: currentUser.id, 
+                    year: parseInt(year), 
+                    plan: plan, 
+                    summary: summary 
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('保存年度计划失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeYearPlanModal();
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('保存年度计划错误:', error);
+                alert('保存年度计划失败');
+            });
         }
         
         // 初始化应用
-        function initApp() {
-            loadDiaries();
+        async function initApp() {
+            await loadDiaries();
             loadTheme();
             updateTodayInfo();
             
@@ -1260,10 +1367,10 @@
             elements.monthSelector.value = String(now.getMonth() + 1);
             
             // 加载当前月份计划
-            loadSelectedMonthPlan();
+            await loadSelectedMonthPlan();
             
             // 计算并更新分类统计
-            updateCategoryStatistics();
+            await updateCategoryStatistics();
             
             // 设置初始按钮状态
             elements.sortNewest.classList.add('border-primary', 'bg-primary', 'text-white');
@@ -1274,6 +1381,18 @@
         
         // 附件处理功能
         let currentAttachment = null;
+        
+        // 清空附件上传区域
+        function clearAttachmentArea() {
+            // 清空文件输入
+            elements.diaryAttachment.value = '';
+            // 清空文件名显示
+            elements.attachmentFilename.textContent = '';
+            // 清空预览区域
+            elements.attachmentPreview.innerHTML = '';
+            // 重置当前附件变量
+            currentAttachment = null;
+        }
         
         // 处理附件选择
         function handleAttachmentChange(event) {
@@ -1374,8 +1493,8 @@
         });
         
         // 更新分类统计
-        function updateCategoryStatistics() {
-            const diaries = getDiariesFromStorage();
+        async function updateCategoryStatistics() {
+            const diaries = await getDiariesFromStorage();
             
             // 计算各分类的日记数量
             const categoryCounts = {
@@ -1397,112 +1516,30 @@
         
         // 导出日记到 Excel 文件
         function exportDiariesToExcel() {
-            const diaries = getDiariesFromStorage();
-            
-            // 创建 Excel 工作簿
-            const wb = XLSX.utils.book_new();
-            
-            // 按年份分组日记
-            const diariesByYear = {};
-            diaries.forEach(diary => {
-                const year = new Date(diary.createdAt).getFullYear();
-                if (!diariesByYear[year]) {
-                    diariesByYear[year] = [];
-                }
-                diariesByYear[year].push(diary);
-            });
-            
-            // 为每个年份创建工作表
-            Object.keys(diariesByYear).forEach(year => {
-                const yearDiaries = diariesByYear[year];
-                
-                // 获取该年份的年度计划和总结
-                const yearPlanKey = `year-plan-${year}`;
-                const yearSummaryKey = `year-summary-${year}`;
-                const yearPlan = localStorage.getItem(yearPlanKey);
-                const yearSummary = localStorage.getItem(yearSummaryKey);
-                
-                const yearlyPlans = [];
-                const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
-                
-                for (let month = 1; month <= 12; month++) {
-                    const planKey = `yearly-plan-${year}-${String(month).padStart(2, '0')}`;
-                    const summaryKey = `yearly-summary-${year}-${String(month).padStart(2, '0')}`;
-                    const plan = localStorage.getItem(planKey);
-                    const summary = localStorage.getItem(summaryKey);
-                    yearlyPlans.push({
-                        '月份': monthNames[month - 1],
-                        '计划': plan || '无',
-                        '总结': summary || '无'
-                    });
-                }
-                
-                // 准备工作表数据 - 先添加年度计划和总结
-                const yearPlanData = [
-                    { '年度总计划': yearPlan || '无' },
-                    { '全年总结': yearSummary || '无' },
-                    {} // 空行分隔
-                ];
-                
-                // 准备月度计划数据
-                const monthlyPlanData = yearlyPlans.map(plan => ({
-                    '月份': plan.月份,
-                    '计划': plan.计划,
-                    '总结': plan.总结
-                }));
-                
-                // 创建工作表
-                const ws = XLSX.utils.aoa_to_sheet([]);
-                
-                // 添加年度计划和总结区域
-                XLSX.utils.sheet_add_aoa(ws, [['年度计划']], {origin: 'A1'});
-                XLSX.utils.sheet_add_json(ws, yearPlanData, {origin: 'A2', skipHeader: false});
-                
-                // 添加月度计划区域
-                const monthlyPlanStartRow = 5;
-                XLSX.utils.sheet_add_aoa(ws, [['月度计划']], {origin: `A${monthlyPlanStartRow}`});
-                XLSX.utils.sheet_add_json(ws, monthlyPlanData, {origin: monthlyPlanStartRow + 1, skipHeader: false});
-                
-                // 在月度计划区域下方添加空行分隔
-                const monthlyPlanRange = XLSX.utils.decode_range(ws['!ref']);
-                const diariesStartRow = monthlyPlanRange.e.r + 3;
-                
-                // 准备日记数据
-                const diariesData = yearDiaries.map(diary => ({
-                    '日期': formatDate(new Date(diary.createdAt)),
-                    '农历日期': getLunarDate(new Date(diary.createdAt)),
-                    '标题': diary.title,
-                    '内容': diary.content,
-                    '计划': diary.plan,
-                    '总结': diary.summary,
-                    '分类': diary.category,
-                    '标签': diary.tags ? diary.tags.join(',') : '',
-                    '天气': diary.weather ? `${diary.weather.description} ${diary.weather.temperature}` : '',
-                    '附件': diary.attachments && diary.attachments.length > 0 ? diary.attachments.map(a => a.name).join(',') : '无',
-                    '创建时间': new Date(diary.createdAt).toLocaleString('zh-CN'),
-                    '更新时间': new Date(diary.updatedAt).toLocaleString('zh-CN')
-                }));
-                
-                // 添加日记数据到工作表
-                XLSX.utils.sheet_add_json(ws, diariesData, {origin: diariesStartRow, skipHeader: false});
-                
-                // 添加日记区域标题
-                XLSX.utils.sheet_add_aoa(ws, [['日记记录']], {origin: `A${diariesStartRow}`});
-                
-                // 调整列宽
-                ws['!cols'] = [
-                    {wch: 10}, {wch: 50}, {wch: 50}, // 计划区域列宽
-                    {wch: 15}, {wch: 15}, {wch: 25}, {wch: 40}, {wch: 20}, 
-                    {wch: 20}, {wch: 10}, {wch: 20}, {wch: 15}, {wch: 40}, {wch: 20}, {wch: 20} // 调整后的列宽，附件列使用 40 宽度
-                ];
-                
-                // 添加到工作簿
-                XLSX.utils.book_append_sheet(wb, ws, year.toString());
-            });
-            
-            // 保存 Excel 文件
-            XLSX.writeFile(wb, 'diary_database.xlsx');
-            alert('日记导出成功！');
+            // 调用后端导出API
+            fetch(`http://localhost:3000/api/export-excel/${currentUser.id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('导出失败');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // 创建下载链接
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'diary_database.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    alert('日记导出成功！');
+                })
+                .catch(error => {
+                    console.error('导出错误:', error);
+                    alert('导出失败，请检查网络连接');
+                });
         }
         
         // 从 Excel 文件导入日记
@@ -1510,104 +1547,38 @@
             const file = event.target.files[0];
             if (!file) return;
             
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, {type: 'array'});
-                    
-                    const importedDiaries = [];
-                    
-                    // 遍历所有工作表（每个工作表代表一年）
-                    wb.SheetNames.forEach(sheetName => {
-                        const ws = wb.Sheets[sheetName];
-                        
-                        // 尝试解析工作表数据，使用多种选项
-                        let jsonData = [];
-                        try {
-                            // 尝试直接解析
-                            jsonData = XLSX.utils.sheet_to_json(ws);
-                            
-                            // 如果没有解析到数据，尝试跳过前几行（可能有计划区域）
-                            if (jsonData.length === 0) {
-                                // 尝试从第5行开始解析（跳过计划区域）
-                                const range = XLSX.utils.decode_range(ws['!ref']);
-                                if (range.e.r > 5) {
-                                    const options = {
-                                        header: 1,
-                                        range: XLSX.utils.encode_range({s: {r: 5, c: 0}, e: range.e})
-                                    };
-                                    const rawData = XLSX.utils.sheet_to_json(ws, options);
-                                    // 查找包含"日期"列的行作为标题行
-                                    const headerIndex = rawData.findIndex(row => 
-                                        row.some(cell => String(cell).includes('日期'))
-                                    );
-                                    if (headerIndex >= 0) {
-                                        const newOptions = {
-                                            range: XLSX.utils.encode_range({
-                                                s: {r: 5 + headerIndex, c: 0}, 
-                                                e: range.e
-                                            })
-                                        };
-                                        jsonData = XLSX.utils.sheet_to_json(ws, newOptions);
-                                    }
-                                }
-                            }
-                        } catch (parseError) {
-                            console.error('解析工作表 ' + sheetName + ' 时出错:', parseError);
-                            return; // 跳过该工作表
-                        }
-                        
-                        jsonData.forEach(row => {
-                            // 检查是否包含日期信息（防止导入计划区域）
-                            if (!row['日期'] && !row['创建时间']) {
-                                return; // 跳过不包含日期信息的行（计划区域）
-                            }
-                            
-                            try {
-                                // 创建日记对象
-                                const diary = {
-                                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                                    title: row['标题'] || '无标题',
-                                    content: row['内容'] || '',
-                                    plan: row['计划'] || '',
-                                    summary: row['总结'] || '',
-                                    category: row['分类'] || '',
-                                    tags: row['标签'] ? row['标签'].split(',').map(tag => tag.trim()).filter(tag => tag) : [],
-                                    weather: row['天气'] ? { 
-                                        description: row['天气'].split(' ')[0] || '', 
-                                        temperature: row['天气'].split(' ')[1] || '' 
-                                    } : null,
-                                    createdAt: parseDate(row['创建时间'] || row['日期']).toISOString(),
-                                    updatedAt: parseDate(row['更新时间'] || row['日期']).toISOString()
-                                };
-                                
-                                importedDiaries.push(diary);
-                            } catch (rowError) {
-                                console.error('解析行时出错:', rowError, row);
-                            }
-                        });
-                    });
-                    
-                    // 保存到本地存储
-                    if (importedDiaries.length > 0) {
-                        localStorage.setItem('diaries', JSON.stringify(importedDiaries));
-                        loadDiaries();
-                        updateCategoryStatistics();
-                        alert('日记导入成功！共导入 ' + importedDiaries.length + ' 条记录');
-                    } else {
-                        alert('没有找到有效的日记数据！');
-                    }
-                    
-                    // 清空文件输入
-                    event.target.value = '';
-                } catch (error) {
-                    console.error('导入错误:', error);
-                    alert('导入失败！请检查文件格式是否正确。错误信息: ' + error.message);
-                }
-            };
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', currentUser.id);
             
-            reader.readAsArrayBuffer(file);
+            // 调用后端导入API
+            fetch('http://localhost:3000/api/import-excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('导入失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 导入成功后重新加载日记数据
+                    loadDiaries();
+                    updateCategoryStatistics();
+                    alert(data.message);
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('导入错误:', error);
+                alert('导入失败，请检查网络连接');
+            });
+            
+            // 清空文件输入
+            event.target.value = '';
         }
         
         // 格式化日期为 YYYY-MM-DD
@@ -1800,6 +1771,9 @@
             elements.diaryTags.value = '';
             elements.diaryPlan.value = '';
             elements.diarySummary.value = '';
+            
+            // 清空附件上传区域
+            clearAttachmentArea();
             elements.modalTitle.textContent = '新建日记';
             
             // 显示当前日期和阴历日期
@@ -1844,6 +1818,34 @@
                 elements.diaryTags.value = diary.tags ? diary.tags.join(', ') : '';
                 elements.diaryPlan.value = diary.plan || '';
                 elements.diarySummary.value = diary.summary || '';
+                
+                // 清空附件上传区域，但保留显示已有的附件
+                clearAttachmentArea();
+                
+                // 显示日记已有的附件
+                if (diary.attachments && diary.attachments.length > 0) {
+                    // 显示第一个附件作为预览
+                    const attachment = diary.attachments[0];
+                    elements.attachmentFilename.textContent = attachment.name;
+                    
+                    // 渲染附件预览
+                    const previewContainer = elements.attachmentPreview;
+                    previewContainer.innerHTML = '';
+                    
+                    if (attachment.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = attachment.data;
+                        img.className = 'max-w-32 max-h-32 rounded-lg object-cover border border-gray-200';
+                        img.alt = attachment.name;
+                        previewContainer.appendChild(img);
+                    } else {
+                        // 非图片类型显示文件图标
+                        const fileIcon = document.createElement('div');
+                        fileIcon.className = 'w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200';
+                        fileIcon.innerHTML = '<i class="fas fa-file text-gray-500 text-2xl"></i>';
+                        previewContainer.appendChild(fileIcon);
+                    }
+                }
                 elements.modalTitle.textContent = '编辑日记';
                 
                 // 显示日记创建日期和阴历日期
@@ -1999,8 +2001,6 @@
             }
             
             localStorage.setItem('diaries', JSON.stringify(diaries));
-            // 自动导出到Excel以保持同步
-            exportDiariesToExcel();
         }
         
         // 从本地存储获取日记
@@ -2023,8 +2023,6 @@
                 localStorage.setItem('diaries', JSON.stringify(filteredDiaries));
                 loadDiaries();
                 updateCategoryStatistics(); // 更新分类统计
-                // 自动导出到Excel以保持同步
-                exportDiariesToExcel();
             }
         }
         
@@ -2069,8 +2067,8 @@
         }
         
         // 加载日记列表
-        function loadDiaries() {
-            const diaries = getDiariesFromStorage();
+        async function loadDiaries() {
+            const diaries = await getDiariesFromStorage();
             
             if (diaries.length === 0) {
                 elements.diaryList.innerHTML = `

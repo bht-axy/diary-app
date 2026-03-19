@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel导入功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #555;
+            font-size: 1.2em;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .btn-danger {
+            background-color: #f44336;
+        }
+        .btn-danger:hover {
+            background-color: #da190b;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Excel导入功能测试</h1>
+        
+        <div class="test-section">
+            <h2>1. 基本功能测试</h2>
+            <p>请选择导出的Excel文件进行导入测试：</p>
+            <input type="file" id="test-file-input" accept=".xlsx, .xls">
+            <button class="btn" onclick="testImport()">开始测试</button>
+            <button class="btn btn-danger" onclick="clearLog()">清空日志</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. 调试信息</h2>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <!-- 引入 SheetJS 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script>
+        // 日志记录函数
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ` + message;
+            const colorClass = type === 'success' ? 'success' : 
+                             type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<span class="${colorClass}">${logEntry}\n</span>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // 清空日志
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // 日期解析函数（与应用程序一致）
+        function parseDate(dateStr) {
+            if (!dateStr) return new Date();
+            
+            // 尝试多种日期格式解析
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+                return date;
+            }
+            
+            return new Date();
+        }
+
+        // 简化的测试导入函数
+        function testImport() {
+            const fileInput = document.getElementById('test-file-input');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                log('请先选择要测试的Excel文件', 'error');
+                return;
+            }
+            
+            log(`开始测试导入文件: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`, 'info');
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, {type: 'array'});
+                    
+                    log(`成功读取Excel文件，包含 ${wb.SheetNames.length} 个工作表`, 'success');
+                    
+                    wb.SheetNames.forEach(sheetName => {
+                        log(`正在解析工作表: ${sheetName}`, 'info');
+                        const ws = wb.Sheets[sheetName];
+                        
+                        // 先获取整个工作表的原始数据
+                        const range = XLSX.utils.decode_range(ws['!ref']);
+                        const options = {
+                            header: 1,
+                            range: XLSX.utils.encode_range({s: {r: 0, c: 0}, e: range.e})
+                        };
+                        const rawData = XLSX.utils.sheet_to_json(ws, options);
+                        
+                        log(`工作表 ${sheetName} 原始数据行数: ${rawData.length}`, 'info');
+                        
+                        // 查找日记记录区域的标题或日期列
+                        let headerIndex = -1;
+                        
+                        // 首先查找"日记记录"标题
+                        for (let i = 0; i < rawData.length; i++) {
+                            const row = rawData[i];
+                            if (row.some(cell => String(cell).includes('日记记录'))) {
+                                headerIndex = i + 1;
+                                log(`在第 ${i + 1} 行找到"日记记录"标题，数据从第 ${headerIndex + 1} 行开始`, 'success');
+                                break;
+                            }
+                        }
+                        
+                        // 如果没有找到"日记记录"标题，直接查找日期列
+                        if (headerIndex === -1) {
+                            for (let i = 0; i < rawData.length; i++) {
+                                const row = rawData[i];
+                                if (row.some(cell => String(cell).includes('日期') || String(cell).includes('创建时间'))) {
+                                    headerIndex = i;
+                                    log(`在第 ${i + 1} 行找到日期列作为标题行`, 'success');
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 确保至少从第21行开始查找（符合用户描述的导出格式）
+                        if (headerIndex >= 0 && headerIndex < 21) {
+                            log(`找到的标题行位于第 ${headerIndex + 1} 行，但根据导出格式，日记数据应该从第21行以后开始，正在重新查找...`, 'info');
+                            
+                            for (let i = 20; i < rawData.length; i++) {
+                                const row = rawData[i];
+                                if (row.some(cell => String(cell).includes('日期') || String(cell).includes('创建时间'))) {
+                                    headerIndex = i;
+                                    log(`在第 ${i + 1} 行找到日期列作为标题行`, 'success');
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (headerIndex >= 0) {
+                            log(`在工作表 ${sheetName} 的第 ${headerIndex + 1} 行找到日记数据标题`, 'success');
+                            
+                            // 解析日记数据
+                            const newOptions = {
+                                range: XLSX.utils.encode_range({
+                                    s: {r: headerIndex, c: 0}, 
+                                    e: range.e
+                                })
+                            };
+                            const jsonData = XLSX.utils.sheet_to_json(ws, newOptions);
+                            log(`从工作表 ${sheetName} 解析到 ${jsonData.length} 行数据`, 'success');
+                            
+                            // 过滤有效日记数据
+                            const validDiaries = [];
+                            jsonData.forEach(row => {
+                                try {
+                                    if (!row['日期'] && !row['创建时间']) {
+                                        return; // 跳过不包含日期信息的行（计划区域）
+                                    }
+                                    
+                                    if (row['日期'] === '日期' || row['创建时间'] === '创建时间' || String(row['日期']).includes('日期')) {
+                                        return; // 跳过标题行
+                                    }
+                                    
+                                    validDiaries.push(row);
+                                } catch (error) {
+                                    log(`解析行时出错: ${error}`, 'error');
+                                }
+                            });
+                            
+                            log(`从工作表 ${sheetName} 提取到 ${validDiaries.length} 条有效日记数据`, 'success');
+                            
+                            if (validDiaries.length > 0) {
+                                // 显示前3条有效数据作为示例
+                                log('示例数据:', 'info');
+                                for (let i = 0; i < Math.min(3, validDiaries.length); i++) {
+                                    const diary = validDiaries[i];
+                                    log(`  第 ${i + 1} 条: 日期=${diary['日期']}, 标题=${diary['标题'] || '无标题'}`, 'info');
+                                }
+                            } else {
+                                log('工作表中未找到有效日记数据', 'error');
+                            }
+                        } else {
+                            log(`在工作表 ${sheetName} 中未找到日记数据`, 'error');
+                        }
+                    });
+                    
+                    log('测试完成！', 'success');
+                    
+                } catch (error) {
+                    log(`导入过程中出错: ${error}`, 'error');
+                    console.error(error);
+                }
+            };
+            
+            reader.onerror = function(error) {
+                log(`读取文件时出错: ${error}`, 'error');
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Excel导入功能测试工具已加载', 'success');
+            log('请选择导出的 Excel 文件进行测试，工具将验证导入解析逻辑是否正常', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "personal-diary-app",
+  "version": "1.0.0",
+  "description": "Personal diary application with local SQLite database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node init-db.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "lokijs": "^1.5.12",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5"
+  },
+  "keywords": [
+    "diary",
+    "sqlite",
+    "local-database",
+    "excel-import"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
