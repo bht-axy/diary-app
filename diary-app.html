@@ -26,6 +26,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- 统一的 Tailwind 配置 -->
     <script>
+        // 环境检测和API配置
+        function getApiBaseUrl() {
+            // 检测是否在GitHub Pages环境中
+            if (window.location.hostname.includes('github.io')) {
+                // GitHub Pages环境，使用相对路径
+                return '';
+            } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                // 本地开发环境，使用localhost:3000
+                return 'http://localhost:3000';
+            } else {
+                // 其他环境，使用当前域名
+                return window.location.origin;
+            }
+        }
+        
+        // 全局API基础URL
+        const API_BASE_URL = getApiBaseUrl();
+        
         tailwind.config = {
             theme: {
                 extend: {
@@ -1043,7 +1061,7 @@
             }
             
             // 调用后端登录API
-            fetch('http://localhost:3000/api/login', {
+            fetch(`${API_BASE_URL}/api/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1088,7 +1106,7 @@
             }
             
             // 调用后端注册API
-            fetch('http://localhost:3000/api/register', {
+            fetch(`${API_BASE_URL}/api/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1131,7 +1149,7 @@
         
         // 获取日记数据
         function getDiariesFromStorage() {
-            return fetch(`http://localhost:3000/api/diaries/${currentUser.id}`)
+            return fetch(`${API_BASE_URL}/api/diaries/${currentUser.id}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('获取日记数据失败');
@@ -1153,7 +1171,7 @@
         
         // 保存日记数据
         function saveDiaryToStorage(diary) {
-            return fetch('http://localhost:3000/api/diaries', {
+            return fetch(`${API_BASE_URL}/api/diaries`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1187,7 +1205,7 @@
             const year = elements.yearSelector.value;
             const month = elements.monthSelector.value;
             
-            return fetch(`http://localhost:3000/api/month-plans/${currentUser.id}/${year}/${month}`)
+            return fetch(`${API_BASE_URL}/api/month-plans/${currentUser.id}/${year}/${month}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('获取月度计划失败');
@@ -1216,7 +1234,7 @@
             const plan = elements.yearlyPlanInput.value.trim();
             const summary = elements.yearlySummaryInput.value.trim();
             
-            return fetch('http://localhost:3000/api/month-plans', {
+            return fetch(`${API_BASE_URL}/api/month-plans`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1254,7 +1272,7 @@
             const year = elements.yearSelector.value;
             const month = elements.monthSelector.value;
             
-            fetch(`http://localhost:3000/api/month-plans/${currentUser.id}/${year}/${month}`)
+            fetch(`${API_BASE_URL}/api/month-plans/${currentUser.id}/${year}/${month}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('获取月度计划失败');
@@ -1288,7 +1306,7 @@
         function openYearPlanModal() {
             const year = elements.yearSelector.value;
             
-            fetch(`http://localhost:3000/api/year-plans/${currentUser.id}/${year}`)
+            fetch(`${API_BASE_URL}/api/year-plans/${currentUser.id}/${year}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('获取年度计划失败');
@@ -1325,7 +1343,7 @@
             const plan = elements.yearPlanInput.value.trim();
             const summary = elements.yearSummaryInput.value.trim();
             
-            return fetch('http://localhost:3000/api/year-plans', {
+            return fetch(`${API_BASE_URL}/api/year-plans`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1517,7 +1535,7 @@
         // 导出日记到 Excel 文件
         function exportDiariesToExcel() {
             // 调用后端导出API
-            fetch(`http://localhost:3000/api/export-excel/${currentUser.id}`)
+            fetch(`${API_BASE_URL}/api/export-excel/${currentUser.id}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('导出失败');
@@ -1552,7 +1570,7 @@
             formData.append('userId', currentUser.id);
             
             // 调用后端导入API
-            fetch('http://localhost:3000/api/import-excel', {
+            fetch(`${API_BASE_URL}/api/import-excel`, {
                 method: 'POST',
                 body: formData
             })
